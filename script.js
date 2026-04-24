@@ -11,17 +11,21 @@ const STORAGE_KEY = "marineDashboardLayoutV2";
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
-/* marine location for satellite compass */
-let marineLocationLat = null;
-let marineLocationLon = null;
-let compassZoom = 15;
-let compassMapMode = "compass"; // "compass" or "widget"
-let compassSize = 190;
 /* location defaults */
 let userLat = 29.938;
 let userLon = -81.302;
 
-/* stations */
+/* marine location for satellite compass */
+let marineLocationLat = null;
+let marineLocationLon = null;
+let compassZoom = 15;
+let compassMapMode = "compass";
+let compassSize = 190;
+
+/* NOAA full station list cache */
+let allNoaaStations = null;
+
+/* stations — fallback used only if NOAA station API fails */
 const LOCAL_STATIONS = [
   { id: "8720554", name: "Vilano Beach ICWW", state: "FL", lat: 29.938, lon: -81.302 },
   { id: "8720576", name: "St. Augustine", state: "FL", lat: 29.894, lon: -81.313 },
@@ -30,10 +34,8 @@ const LOCAL_STATIONS = [
 ];
 
 const DEFAULT_STATION = LOCAL_STATIONS[0];
-
 let selectedStation = DEFAULT_STATION;
 let nearbyStations = [...LOCAL_STATIONS];
-
 const WEATHER_HOURS = 12;
 
 const TIDE_WINDOW_HOURS = 24;
@@ -80,10 +82,11 @@ function init() {
   loadAllSettings();
   applyAllWidgetSettings();
 
-  refreshAll();
-  getLocation();
   loadMarineLocation();
   attachCompassSettingsEvents();
+
+  refreshAll();
+  getLocation();
 
   setInterval(updateClockAndDate, 1000);
 
@@ -92,7 +95,6 @@ function init() {
     if (tideViewMode === "live") loadTides();
   }, 60000);
 }
-
 /* ==========================================================================
    SCALE
    ========================================================================== */
@@ -770,26 +772,93 @@ function getLocation() {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
 
-      nearbyStations = [...LOCAL_STATIONS]
-        .map(station => ({
-          ...station,
-          distance: haversineMiles(userLat, userLon, station.lat, station.lon)
-        }))
-        .sort((a, b) => a.distance - b.distance);
-
-      populateStationDropdown();
-
-      const existing = nearbyStations.find(s => s.id === selectedStation.id);
-      selectedStation = existing || nearbyStations[0];
+      /* marina address takes priority over GPS */
+      if (marineLocationLat && marineLocationLon) return;
 
       const select = document.getElementById("stationSelect");
-      if (select) select.value = selectedStation.id;
+      if (select) select.innerHTML = "<option>Finding nearby stations...</option>";
 
-      await refreshAll();
+      if (!allNoaaStations) {
+        allNoaaStations = await fetchAllNoaaStations();
+      }
+
+      await updateNearbyStations(userLat, userLon);
     },
     () => {},
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
   );
+}
+
+async function updateNearbyStations(lat, lon) {
+  const stations = allNoaaStations || LOCAL_STATIONS;
+
+  nearbyStations = stations
+    .map(s => ({
+      ...s,
+      distance: haversineMiles(lat, lon, s.lat, s.lon)
+    }))
+    .filter(s => !isNaN(s.distance))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5);
+
+  if (nearbyStations.length === 0) nearbyStations = [...LOCAL_STATIONS];
+
+  populateStationDropdown();
+
+  const existing = nearbyStations.find(s => s.id === selectedStation.id);
+  selectedStation = existing || nearbyStations[0];
+
+  const select = document.getElementById("stationSelect");
+  if (select) select.value = selectedStation.id;
+
+  await refreshAll();
+}
+
+async function fetchAllNoaaStations() {
+  /* check localStorage cache first — valid for 24 hours */
+  const cached = localStorage.getItem("noaaStationsCache");
+  const cachedTime = localStorage.getItem("noaaStationsCacheTime");
+
+  if (cached && cachedTime) {
+    const age = Date.now() - parseInt(cachedTime);
+    if (age < 86400000) { /* 24 hours */
+      try {
+        return JSON.parse(cached);
+      } catch(e) {}
+    }
+  }
+
+  try {
+    const res = await fetch(`${NOAA_PROXY}/stations`);
+    if (!res.ok) throw new Error("Station list fetch failed");
+
+    const data = await res.json();
+
+    /* NOAA returns stations in data.stations array
+       filter to only tide prediction stations (type "R" = water level) */
+    const stations = (data.stations || [])
+      .filter(s =>
+        s.lat != null &&
+        s.lng != null &&
+        s.tidal === true
+      )
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        state: s.state || "",
+        lat: parseFloat(s.lat),
+        lon: parseFloat(s.lng)
+      }));
+
+    /* cache to localStorage */
+    localStorage.setItem("noaaStationsCache", JSON.stringify(stations));
+    localStorage.setItem("noaaStationsCacheTime", Date.now().toString());
+
+    return stations;
+  } catch (err) {
+    console.warn("Could not fetch NOAA stations, using local fallback:", err);
+    return null;
+  }
 }
 
 function populateStationDropdown() {
@@ -960,7 +1029,33 @@ async function geocodeMarineAddress(address) {
       localStorage.setItem("marineLocationLat", marineLocationLat);
       localStorage.setItem("marineLocationLon", marineLocationLon);
       localStorage.setItem("marineLocationAddress", address);
+
       updateCompassMap();
+
+      /* update nearby stations to match marina address */
+      userLat = marineLocationLat;
+      userLon = marineLocationLon;
+
+      if (!allNoaaStations) allNoaaStations = await fetchAllNoaaStations();
+
+      nearbyStations = (allNoaaStations || LOCAL_STATIONS)
+        .map(s => ({
+          ...s,
+          distance: haversineMiles(userLat, userLon, s.lat, s.lon)
+        }))
+        .filter(s => !isNaN(s.distance))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5);
+
+      if (nearbyStations.length === 0) nearbyStations = [...LOCAL_STATIONS];
+
+      populateStationDropdown();
+      selectedStation = nearbyStations[0];
+
+      const select = document.getElementById("stationSelect");
+      if (select) select.value = selectedStation.id;
+
+      await refreshAll();
     } else {
       alert("Address not found — try being more specific, e.g. '111 Avenida Menendez, St Augustine FL'");
     }
@@ -1002,9 +1097,17 @@ function loadMarineLocation() {
   if (lat && lon) {
     marineLocationLat = parseFloat(lat);
     marineLocationLon = parseFloat(lon);
+    userLat = marineLocationLat;
+    userLon = marineLocationLon;
+
     const input = document.getElementById("marineAddressInput");
     if (input && address) input.value = address;
     updateCompassMap();
+
+    fetchAllNoaaStations().then(stations => {
+      allNoaaStations = stations;
+      updateNearbyStations(marineLocationLat, marineLocationLon);
+    });
   }
 }
 
@@ -1090,11 +1193,38 @@ function loadMarineLocation() {
   if (lat && lon) {
     marineLocationLat = parseFloat(lat);
     marineLocationLon = parseFloat(lon);
-
     const input = document.getElementById("marineAddressInput");
     if (input && address) input.value = address;
-
     updateCompassMap();
+
+    /* use saved marina location to load correct nearby stations */
+    userLat = marineLocationLat;
+    userLon = marineLocationLon;
+
+    if (!allNoaaStations) {
+      fetchAllNoaaStations().then(stations => {
+        allNoaaStations = stations;
+
+        nearbyStations = (allNoaaStations || LOCAL_STATIONS)
+          .map(s => ({
+            ...s,
+            distance: haversineMiles(userLat, userLon, s.lat, s.lon)
+          }))
+          .filter(s => !isNaN(s.distance))
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, 5);
+
+        if (nearbyStations.length === 0) nearbyStations = [...LOCAL_STATIONS];
+
+        populateStationDropdown();
+        selectedStation = nearbyStations[0];
+
+        const select = document.getElementById("stationSelect");
+        if (select) select.value = selectedStation.id;
+
+        refreshAll();
+      });
+    }
   }
 }
 
@@ -1702,6 +1832,213 @@ function shiftHue(hex, degree) {
   const rgb = hslToRgb(hsl.h, hsl.s, hsl.l);
 
   return rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+
+/* ==========================================================================
+   SATELLITE COMPASS
+   ========================================================================== */
+function updateCompassMap() {
+  const canvas = document.getElementById("compassMapCanvas");
+  const compassEl = document.getElementById("compassWidget");
+  if (!canvas || !marineLocationLat || !marineLocationLon) return;
+
+  const size = compassSize;
+
+  if (compassEl) {
+    compassEl.style.width = `${size}px`;
+    compassEl.style.height = `${size}px`;
+  }
+
+  if (compassMapMode === "widget") {
+    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
+    const w2 = widgetFrame ? widgetFrame.offsetWidth : size;
+    const h2 = widgetFrame ? widgetFrame.offsetHeight : size;
+    canvas.width = w2;
+    canvas.height = h2;
+    canvas.style.width = w2 + "px";
+    canvas.style.height = h2 + "px";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.borderRadius = "8px";
+    canvas.classList.add("fillWidget");
+  } else {
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = size + "px";
+    canvas.style.height = size + "px";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.classList.remove("fillWidget");
+  }
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+
+  const zoom = compassZoom;
+  const lat = marineLocationLat;
+  const lon = marineLocationLon;
+
+  const n = Math.pow(2, zoom);
+  const tileX = Math.floor((lon + 180) / 360 * n);
+  const latRad = lat * Math.PI / 180;
+  const tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  const pixelX = Math.floor(((lon + 180) / 360 * n - tileX) * 256);
+  const pixelY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY) * 256);
+
+  ctx.save();
+  ctx.beginPath();
+  if (compassMapMode === "compass") {
+    ctx.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2);
+  } else {
+    ctx.roundRect(0, 0, w, h, 8);
+  }
+  ctx.clip();
+  ctx.fillStyle = "#0a1924";
+  ctx.fillRect(0, 0, w, h);
+
+  [-1, 0, 1].forEach(dy => {
+    [-1, 0, 1].forEach(dx => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY + dy}/${tileX + dx}`;
+      img.onload = () => {
+        const drawX = (w / 2 - pixelX) + dx * 256;
+        const drawY = (h / 2 - pixelY) + dy * 256;
+        ctx.drawImage(img, drawX, drawY, 256, 256);
+      };
+    });
+  });
+
+  ctx.restore();
+}
+
+async function geocodeMarineAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      marineLocationLat = parseFloat(data[0].lat);
+      marineLocationLon = parseFloat(data[0].lon);
+
+      localStorage.setItem("marineLocationLat", marineLocationLat);
+      localStorage.setItem("marineLocationLon", marineLocationLon);
+      localStorage.setItem("marineLocationAddress", address);
+
+      updateCompassMap();
+
+      /* update nearby stations based on marina address */
+      userLat = marineLocationLat;
+      userLon = marineLocationLon;
+
+      if (!allNoaaStations) allNoaaStations = await fetchAllNoaaStations();
+      await updateNearbyStations(marineLocationLat, marineLocationLon);
+    } else {
+      alert("Address not found — try being more specific, e.g. '111 Avenida Menendez, St Augustine FL'");
+    }
+  } catch (err) {
+    console.error("Geocode error:", err);
+  }
+}
+
+function loadMarineLocation() {
+  const lat = localStorage.getItem("marineLocationLat");
+  const lon = localStorage.getItem("marineLocationLon");
+  const address = localStorage.getItem("marineLocationAddress");
+  const savedZoom = localStorage.getItem("compassZoom");
+  const savedMode = localStorage.getItem("compassMapMode");
+  const savedSize = localStorage.getItem("compassSize");
+
+  if (savedZoom) {
+    compassZoom = parseInt(savedZoom);
+    const zSlider = document.getElementById("compassZoom");
+    const zLabel = document.getElementById("compassZoomLabel");
+    if (zSlider) zSlider.value = compassZoom;
+    if (zLabel) zLabel.textContent = compassZoom;
+  }
+
+  if (savedMode) {
+    compassMapMode = savedMode;
+    const modeSelect = document.getElementById("compassMapMode");
+    if (modeSelect) modeSelect.value = compassMapMode;
+  }
+
+  if (savedSize) {
+    compassSize = parseInt(savedSize);
+    const sSlider = document.getElementById("compassSizeSlider");
+    const sLabel = document.getElementById("compassSizeLabel");
+    if (sSlider) sSlider.value = compassSize;
+    if (sLabel) sLabel.textContent = compassSize + "px";
+  }
+
+  if (lat && lon) {
+    marineLocationLat = parseFloat(lat);
+    marineLocationLon = parseFloat(lon);
+    userLat = marineLocationLat;
+    userLon = marineLocationLon;
+
+    const input = document.getElementById("marineAddressInput");
+    if (input && address) input.value = address;
+
+    updateCompassMap();
+
+    /* load correct nearby stations from saved marina location */
+    fetchAllNoaaStations().then(stations => {
+      allNoaaStations = stations;
+      updateNearbyStations(marineLocationLat, marineLocationLon);
+    });
+  }
+}
+
+function attachCompassSettingsEvents() {
+  const marineBtn = document.getElementById("marineAddressBtn");
+  if (marineBtn) {
+    marineBtn.addEventListener("click", () => {
+      const input = document.getElementById("marineAddressInput");
+      if (input && input.value.trim()) geocodeMarineAddress(input.value.trim());
+    });
+  }
+
+  const addressInput = document.getElementById("marineAddressInput");
+  if (addressInput) {
+    addressInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && addressInput.value.trim()) {
+        geocodeMarineAddress(addressInput.value.trim());
+      }
+    });
+  }
+
+  const zoomSlider = document.getElementById("compassZoom");
+  if (zoomSlider) {
+    zoomSlider.addEventListener("input", () => {
+      compassZoom = parseInt(zoomSlider.value);
+      document.getElementById("compassZoomLabel").textContent = compassZoom;
+      localStorage.setItem("compassZoom", compassZoom);
+      updateCompassMap();
+    });
+  }
+
+  const modeSelect = document.getElementById("compassMapMode");
+  if (modeSelect) {
+    modeSelect.addEventListener("change", () => {
+      compassMapMode = modeSelect.value;
+      localStorage.setItem("compassMapMode", compassMapMode);
+      updateCompassMap();
+    });
+  }
+
+  const sizeSlider = document.getElementById("compassSizeSlider");
+  if (sizeSlider) {
+    sizeSlider.addEventListener("input", () => {
+      compassSize = parseInt(sizeSlider.value);
+      document.getElementById("compassSizeLabel").textContent = compassSize + "px";
+      localStorage.setItem("compassSize", compassSize);
+      updateCompassMap();
+    });
+  }
 }
 
 function hexToRgb(hex) {
