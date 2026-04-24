@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marine Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="dashboardStage">
+      <div id="dashboard">
+
+        <div class="widget" data-widget="layout" id="layoutWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button id="layoutSettingsBtn" class="widgetSettingsBtn" title="Dashboard settings">⚙</button>
+            </div>
+            <div class="widgetHandle"></div>
+            <button id="layoutToggle" class="layoutToggle">Edit Layout</button>
+
+            <div class="widgetSettingsPanel dashboardSettingsPanel" data-settings-for="layout">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Dashboard Settings</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label for="dashboardBackgroundColor">Background Color</label>
+                <input type="color" id="dashboardBackgroundColor" value="#07131c">
+              </div>
+
+              <div class="settingsRow">
+                <label for="dashboardBackgroundHue">Background Hue</label>
+                <input type="range" id="dashboardBackgroundHue" min="0" max="360" value="0">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" id="dashboardResetBtn" class="settingsActionBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="stations" id="stationsWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="stationPanel">
+              <div class="stationBar">
+                <label for="stationSelect" class="stationLabel">Station</label>
+                <select id="stationSelect"></select>
+              </div>
+
+              <div class="dateBar">
+                <label for="tideDateSelect" class="stationLabel">Tide Date</label>
+                <input type="date" id="tideDateSelect">
+                <button id="viewDateBtn" class="dateBtn">View Day</button>
+                <button id="liveViewBtn" class="dateBtn">Return to Live</button>
+              </div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="stations">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Station Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#eef7ff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="logo" id="logoWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="logoBanner">
+              <img id="sailingLogo" class="sailingLogo" src="staugustine-sailing-logo.png" alt="St Augustine Sailing logo">
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="logo">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Logo Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="heroText" id="heroTextWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="heroTextBanner">
+              <div class="heroText">
+                <div class="heroTitle" id="heroTitleText">St Augustine Sailing</div>
+                <div class="heroSubtitle" id="heroSubtitleText">Weather Forecast</div>
+              </div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="heroText">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Forecast Title Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label for="heroTitleInput">Main Title</label>
+                <input type="text" id="heroTitleInput" value="St Augustine Sailing">
+              </div>
+
+              <div class="settingsRow">
+                <label for="heroSubtitleInput">Subtitle</label>
+                <input type="text" id="heroSubtitleInput" value="Weather Forecast">
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#f4fbff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="clock" id="clockWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="clockWrap">
+              <div class="clock" id="clock"></div>
+              <div class="date" id="date"></div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="clock">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Clock Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#f4fbff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="temp" id="tempWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="tempBox">
+              <div id="tempMain"></div>
+              <div id="tempSub"></div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="temp">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Temperature Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#f5fbff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="wind" id="windWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="windBox">
+              <div id="windSpeed"></div>
+
+              <div class="compass">
+                <div class="cardinal n">N</div>
+                <div class="cardinal e">E</div>
+                <div class="cardinal s">S</div>
+                <div class="cardinal w">W</div>
+
+                <div class="ring"></div>
+                <div class="arrow" id="windArrow"></div>
+                <div class="deg" id="windDeg"></div>
+              </div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="wind">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Wind Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#d9f2ff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#b9dcec">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="tideStatus" id="tideStatusWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="lowTideAlert" id="lowTideAlert"></div>
+            <div class="currentTide" id="currentTide"></div>
+
+            <div class="widgetSettingsPanel" data-settings-for="tideStatus">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Tide Status Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#dff6ff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="forecast" id="forecastWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="forecastWrap">
+              <div class="forecast" id="forecast"></div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="forecast">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Forecast Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                  <option value="dynamic">Animated Forecast</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font</label>
+                <select class="fontSelect" data-target="row1Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row1Color" value="#f1fbff">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 1 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font</label>
+                <select class="fontSelect" data-target="row2Font">
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Font Color</label>
+                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
+              </div>
+
+              <div class="settingsRow">
+                <label>Row 2 Alert Color</label>
+                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="divider" id="dividerWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="sectionDivider"></div>
+
+            <div class="widgetSettingsPanel" data-settings-for="divider">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Divider Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+        <div class="widget" data-widget="tideChart" id="tideChartWidget">
+          <div class="widgetFrame">
+            <div class="widgetControls">
+              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
+            </div>
+            <div class="widgetHandle"></div>
+
+            <div class="tideSection">
+              <div class="tidePanel">
+                <canvas id="tideChart"></canvas>
+                <div id="tideLine"></div>
+              </div>
+            </div>
+
+            <div class="widgetSettingsPanel" data-settings-for="tideChart">
+              <div class="settingsHeader">
+                <div class="settingsTitle">Tide Chart Widget</div>
+                <button class="closeSettingsBtn" type="button">✕</button>
+              </div>
+
+              <div class="settingsRow">
+                <label>Theme</label>
+                <select class="themeSelect" data-setting="theme">
+                  <option value="default">Default</option>
+                  <option value="clean">Clean</option>
+                  <option value="glass">Glass</option>
+                  <option value="ocean">Ocean</option>
+                  <option value="sunset">Sunset</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Widget Background</label>
+                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+              </div>
+
+              <div class="settingsActions">
+                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              </div>
+            </div>
+
+            <div class="widgetResize"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

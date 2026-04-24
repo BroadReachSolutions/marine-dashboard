@@ -1,0 +1,983 @@
+:root {
+  --dash-width: 1920;
+  --dash-height: 1080;
+
+  --dashboard-bg-1: #07131c;
+  --dashboard-bg-2: #0b1f2d;
+  --dashboard-bg-3: #08141d;
+  --dashboard-accent: rgba(125, 186, 220, 0.35);
+
+  --widget-bg: rgba(10, 25, 36, 0.72);
+  --widget-border: rgba(140, 200, 230, 0.22);
+  --widget-shadow: 0 12px 30px rgba(0, 0, 0, 0.20);
+
+  --text-main: #eef7ff;
+  --text-soft: #9fc2d9;
+  --alert-color: #ff7c7c;
+
+  --control-bg: rgba(10, 25, 36, 0.96);
+  --control-border: rgba(125, 186, 220, 0.35);
+
+  --settings-width: 330px;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  color: var(--text-main);
+  font-family: "Segoe UI", Arial, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(50, 90, 120, 0.22), transparent 35%),
+    linear-gradient(to bottom, var(--dashboard-bg-1) 0%, var(--dashboard-bg-2) 45%, var(--dashboard-bg-3) 100%);
+}
+
+body.dashboard-flat-bg {
+  background: var(--dashboard-bg-1);
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+#dashboardStage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+#dashboard {
+  position: relative;
+  width: calc(var(--dash-width) * 1px);
+  height: calc(var(--dash-height) * 1px);
+  transform-origin: center center;
+  background: transparent;
+}
+
+/* Widget system */
+.widget {
+  position: absolute;
+  box-sizing: border-box;
+  --widget-local-bg: var(--widget-bg);
+  --widget-local-border: var(--widget-border);
+  --widget-local-shadow: var(--widget-shadow);
+  --widget-local-radius: 18px;
+  --row1-font: "Segoe UI", Arial, sans-serif;
+  --row2-font: "Segoe UI", Arial, sans-serif;
+  --row1-color: #eef7ff;
+  --row2-color: #9fc2d9;
+  --row1-alert-color: #ff7c7c;
+  --row2-alert-color: #ff7c7c;
+}
+
+.widget.hidden-widget {
+  display: none !important;
+}
+
+.widgetFrame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.widget {
+  overflow: visible;
+}
+
+.widgetFrame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--widget-local-bg);
+  border: 1px solid var(--widget-local-border);
+  border-radius: var(--widget-local-radius);
+  box-shadow: var(--widget-local-shadow);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.widget[data-widget="layout"] .widgetFrame::before {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.widgetHandle,
+.widgetResize,
+.widgetControls {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  display: none;
+}
+
+body.layout-edit .widget {
+  outline: 2px dashed rgba(140, 200, 230, 0.45);
+  outline-offset: 3px;
+}
+
+body.layout-edit .widgetHandle,
+body.layout-edit .widgetResize,
+body.layout-edit .widgetControls {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.widgetHandle {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  cursor: move;
+  background: rgba(120, 190, 220, 0.08);
+  z-index: 35;
+  border-top-left-radius: var(--widget-local-radius);
+  border-top-right-radius: var(--widget-local-radius);
+}
+
+.widgetResize {
+  width: 18px;
+  height: 18px;
+  right: 4px;
+  bottom: 4px;
+  cursor: nwse-resize;
+  background: rgba(120, 190, 220, 0.45);
+  border-radius: 4px;
+  z-index: 35;
+}
+
+.widgetControls {
+  top: 8px;
+  right: 8px;
+  z-index: 45;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.widgetSettingsBtn,
+.widgetHideBtn,
+.closeSettingsBtn,
+.settingsActionBtn {
+  appearance: none;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: #eef7ff;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.widgetSettingsBtn:hover,
+.widgetHideBtn:hover,
+.closeSettingsBtn:hover,
+.settingsActionBtn:hover,
+.layoutToggle:hover,
+.dateBtn:hover {
+  transform: translateY(-1px);
+}
+
+.widgetSettingsBtn,
+.widgetHideBtn {
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widgetHideBtn.is-hidden {
+  background: rgba(130, 38, 38, 0.95);
+  border-color: rgba(255, 124, 124, 0.45);
+}
+
+.widgetSettingsPanel {
+  position: absolute;
+  top: 52px;
+  right: 8px;
+  width: var(--settings-width);
+  max-height: calc(100% - 62px);
+  overflow: auto;
+  padding: 14px;
+  box-sizing: border-box;
+  background: rgba(8, 20, 29, 0.97);
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+  z-index: 60;
+  display: none;
+}
+
+.widget.show-settings .widgetSettingsPanel {
+  display: block;
+}
+
+.settingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.settingsTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f5fbff;
+}
+
+.closeSettingsBtn {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+}
+
+.settingsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.settingsRow label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #b8dcec;
+  text-transform: uppercase;
+}
+
+.settingsRow input[type="text"],
+.settingsRow input[type="date"],
+.settingsRow input[type="color"],
+.settingsRow input[type="range"],
+.settingsRow select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settingsRow input[type="text"],
+.settingsRow input[type="date"],
+.settingsRow select {
+  background: rgba(10, 25, 36, 0.95);
+  color: #eef7ff;
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.settingsRow input[type="color"] {
+  height: 42px;
+  background: rgba(10, 25, 36, 0.95);
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.settingsRow input[type="range"] {
+  accent-color: #67c0f0;
+}
+
+.settingsActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.settingsActionBtn {
+  min-width: 100px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Default placements */
+#layoutWidget { left: 1680px; top: 18px; width: 190px; height: 58px; }
+#stationsWidget { left: 40px; top: 20px; width: 900px; height: 130px; }
+#logoWidget { left: 980px; top: 20px; width: 150px; height: 120px; }
+#heroTextWidget { left: 1145px; top: 20px; width: 470px; height: 120px; }
+#clockWidget { left: 40px; top: 165px; width: 420px; height: 140px; }
+#tempWidget { left: 640px; top: 175px; width: 340px; height: 130px; }
+#windWidget { left: 1320px; top: 120px; width: 380px; height: 250px; }
+#tideStatusWidget { left: 600px; top: 310px; width: 720px; height: 74px; }
+#forecastWidget { left: 70px; top: 395px; width: 1780px; height: 240px; }
+#dividerWidget { left: 70px; top: 645px; width: 1780px; height: 1px; }
+#tideChartWidget { left: 70px; top: 655px; width: 1780px; height: 360px; }
+
+#layoutWidget {
+  left: 1680px;
+  top: 18px;
+  width: 190px;
+  height: 58px;
+  z-index: 99999 !important;
+}
+
+/* Layout button */
+.layoutToggle {
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  position: relative;
+  background: rgba(10, 25, 36, 0.92);
+  color: #eef7ff;
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.layoutToggle.active {
+  background: rgba(40, 90, 120, 0.95);
+}
+
+.stationPanel,
+.logoBanner,
+.heroTextBanner,
+.clockWrap,
+.tempBox,
+.windBox,
+.lowTideAlert,
+.currentTide,
+.forecastWrap,
+.sectionDivider,
+.tideSection {
+  position: relative;
+  z-index: 1;
+}
+
+/* Stations widget */
+.stationPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 32px 14px 8px 14px;
+}
+
+.stationBar,
+.dateBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stationLabel {
+  font-size: 20px;
+  color: var(--row2-color);
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-family: var(--row2-font);
+}
+
+#stationSelect,
+#tideDateSelect {
+  background: rgba(10, 25, 36, 0.95);
+  color: #eef7ff;
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 18px;
+}
+
+#stationSelect {
+  min-width: 360px;
+}
+
+#tideDateSelect {
+  min-width: 220px;
+}
+
+.dateBtn {
+  background: rgba(20, 70, 100, 0.92);
+  color: #eef7ff;
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 18px;
+  cursor: pointer;
+  min-width: 160px;
+  text-align: center;
+}
+
+/* Logo widget */
+.logoBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.sailingLogo {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Hero text widget */
+.heroTextBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.heroTitle {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+  line-height: 1.05;
+}
+
+.heroSubtitle {
+  font-size: 24px;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+  margin-top: 6px;
+}
+
+/* Clock widget */
+.clockWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  padding: 16px 14px 10px 14px;
+  box-sizing: border-box;
+}
+
+.clock {
+  font-size: 86px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+}
+
+.date {
+  margin-top: 10px;
+  font-size: 30px;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+}
+
+/* Temp widget */
+.tempBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+#tempMain {
+  font-size: 66px;
+  font-weight: 700;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+  line-height: 1;
+}
+
+#tempSub {
+  margin-top: 5px;
+  font-size: 24px;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+}
+
+/* Wind widget */
+.windBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding-top: 14px;
+  box-sizing: border-box;
+}
+
+#windSpeed {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+  margin-bottom: 8px;
+}
+
+.compass {
+  width: 190px;
+  height: 190px;
+  margin: 12px auto 44px auto;
+  position: relative;
+}
+
+.ring {
+  border: 3px solid rgba(160, 220, 255, 0.75);
+  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  box-shadow:
+    0 0 18px rgba(84, 180, 255, 0.14),
+    inset 0 0 14px rgba(84, 180, 255, 0.06);
+}
+
+.cardinal {
+  position: absolute;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+}
+
+.n { top: -20px; left: 50%; transform: translateX(-50%); }
+.s { bottom: -24px; left: 50%; transform: translateX(-50%); }
+.e { right: -20px; top: 50%; transform: translateY(-50%); }
+.w { left: -20px; top: 50%; transform: translateY(-50%); }
+
+.arrow {
+  position: absolute;
+  width: 6px;
+  height: 80px;
+  background: linear-gradient(to top, #ff7b54, #ffb08a);
+  top: 14px;
+  left: 50%;
+  transform-origin: bottom center;
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(255, 140, 100, 0.35);
+  margin-left: -3px;
+}
+
+.deg {
+  position: absolute;
+  bottom: -60px;
+  width: 100%;
+  text-align: center;
+  color: var(--row2-color);
+  font-size: 24px;
+  font-weight: 600;
+  font-family: var(--row2-font);
+}
+
+/* Tide status widget */
+.lowTideAlert {
+  min-height: 26px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--row1-alert-color);
+  letter-spacing: 0.04em;
+  padding-top: 12px;
+  font-family: var(--row1-font);
+}
+
+.currentTide {
+  text-align: center;
+  font-size: 28px;
+  margin-top: 4px;
+  font-weight: 600;
+  padding: 0 12px;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+}
+
+/* Forecast widget */
+.forecastWrap {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 18px 8px 8px 8px;
+  cursor: pointer;
+}
+
+.forecast {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+}
+
+.card {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  background: linear-gradient(to bottom, rgba(18, 42, 58, 0.95), rgba(10, 24, 35, 0.96));
+  border: 1px solid rgba(140, 200, 230, 0.22);
+  border-radius: 14px;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Dynamic animated forecast backgrounds */
+.widget.theme-dynamic .card.weather-sunny::before,
+.widget.theme-dynamic .card.weather-partly::before,
+.widget.theme-dynamic .card.weather-cloudy::before,
+.widget.theme-dynamic .card.weather-rainy::before,
+.widget.theme-dynamic .card.weather-stormy::before,
+.widget.theme-dynamic .card.weather-night::before {
+  opacity: 1;
+}
+
+.widget.theme-dynamic .card.weather-sunny::before {
+  background:
+    radial-gradient(circle at 75% 22%, rgba(255, 230, 85, 0.95) 0 12%, rgba(255, 230, 85, 0.18) 12% 24%, transparent 25%),
+    linear-gradient(to bottom, rgba(92, 187, 255, 0.85), rgba(21, 78, 132, 0.65));
+}
+
+.widget.theme-dynamic .card.weather-partly::before {
+  background:
+    radial-gradient(circle at 72% 20%, rgba(255, 226, 112, 0.82) 0 10%, rgba(255, 226, 112, 0.20) 10% 20%, transparent 21%),
+    radial-gradient(circle at 30% 35%, rgba(255,255,255,0.78) 0 10%, transparent 11%),
+    radial-gradient(circle at 42% 37%, rgba(255,255,255,0.78) 0 10%, transparent 11%),
+    radial-gradient(circle at 52% 35%, rgba(255,255,255,0.78) 0 10%, transparent 11%),
+    linear-gradient(to bottom, rgba(114, 177, 227, 0.88), rgba(34, 67, 101, 0.74));
+}
+
+.widget.theme-dynamic .card.weather-cloudy::before {
+  background:
+    radial-gradient(circle at 26% 36%, rgba(224, 233, 239, 0.62) 0 11%, transparent 12%),
+    radial-gradient(circle at 38% 38%, rgba(224, 233, 239, 0.62) 0 11%, transparent 12%),
+    radial-gradient(circle at 52% 36%, rgba(224, 233, 239, 0.62) 0 11%, transparent 12%),
+    linear-gradient(to bottom, rgba(108, 129, 148, 0.94), rgba(53, 67, 82, 0.82));
+}
+
+.widget.theme-dynamic .card.weather-rainy::before {
+  background:
+    repeating-linear-gradient(
+      110deg,
+      rgba(170, 220, 255, 0.00) 0 10px,
+      rgba(170, 220, 255, 0.32) 10px 12px,
+      rgba(170, 220, 255, 0.00) 12px 22px
+    ),
+    linear-gradient(to bottom, rgba(92, 111, 129, 0.95), rgba(35, 47, 60, 0.9));
+  animation: rainShift 1.3s linear infinite;
+}
+
+.widget.theme-dynamic .card.weather-stormy::before {
+  background:
+    repeating-linear-gradient(
+      110deg,
+      rgba(170, 220, 255, 0.00) 0 10px,
+      rgba(170, 220, 255, 0.26) 10px 12px,
+      rgba(170, 220, 255, 0.00) 12px 22px
+    ),
+    linear-gradient(to bottom, rgba(67, 76, 93, 0.98), rgba(19, 25, 34, 0.94));
+  animation: rainShift 1.15s linear infinite, lightningFlash 6s infinite;
+}
+
+.widget.theme-dynamic .card.weather-night::before {
+  background:
+    radial-gradient(circle at 76% 22%, rgba(236, 241, 255, 0.9) 0 7%, rgba(236, 241, 255, 0.15) 7% 16%, transparent 17%),
+    linear-gradient(to bottom, rgba(35, 50, 82, 0.92), rgba(11, 16, 29, 0.92));
+}
+
+@keyframes rainShift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 28px, 0 0; }
+}
+
+@keyframes lightningFlash {
+  0%, 85%, 100% { filter: brightness(1); }
+  86% { filter: brightness(1.7); }
+  87% { filter: brightness(1.05); }
+  88% { filter: brightness(1.5); }
+  89% { filter: brightness(1); }
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.card.weekly {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.card .hour {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--row1-color);
+  margin-bottom: 8px;
+  font-family: var(--row1-font);
+}
+
+.card .tempF {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+}
+
+.card .humidity {
+  font-size: 15px;
+  color: var(--row2-color);
+  margin-top: 3px;
+  margin-bottom: 6px;
+  font-family: var(--row2-font);
+}
+
+.card .tempC {
+  font-size: 16px;
+  color: var(--row2-color);
+  margin-bottom: 8px;
+  font-family: var(--row2-font);
+}
+
+.card .rain {
+  font-size: 17px;
+  color: #8ed8ff;
+  margin-bottom: 6px;
+  font-family: var(--row2-font);
+}
+
+.card .windMini {
+  font-size: 16px;
+  color: var(--row1-color);
+  font-family: var(--row2-font);
+}
+
+.card .dirMini {
+  font-size: 16px;
+  color: var(--row2-color);
+  margin-top: 3px;
+  font-family: var(--row2-font);
+}
+
+.card .danger {
+  color: var(--row1-alert-color) !important;
+  font-weight: 700;
+}
+
+.card .boxAlert {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--row2-alert-color);
+  line-height: 1.2;
+  text-transform: uppercase;
+  font-family: var(--row2-font);
+}
+
+/* Divider widget */
+.sectionDivider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(160, 220, 255, 0.45), transparent);
+  margin-top: 0;
+}
+
+/* Tide chart widget */
+.tideSection {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 14px 0 0 0;
+}
+
+.tidePanel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 24, 35, 0.22);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+#tideChart {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: ew-resize;
+}
+
+#tideLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ff6f61;
+  box-shadow: 0 0 10px rgba(255, 111, 97, 0.45);
+  pointer-events: none;
+}
+
+#tideReadout {
+  position: absolute;
+  top: 10px;
+  transform: translateX(-50%);
+  background: rgba(8, 20, 29, 0.92);
+  color: #eef7ff;
+  border: 1px solid rgba(125, 186, 220, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Theme presets */
+.widget.theme-default {
+  --widget-local-bg: rgba(10, 25, 36, 0.72);
+  --widget-local-border: rgba(140, 200, 230, 0.22);
+  --widget-local-shadow: 0 12px 30px rgba(0, 0, 0, 0.20);
+}
+
+.widget.theme-clean {
+  --widget-local-bg: transparent;
+  --widget-local-border: transparent;
+  --widget-local-shadow: none;
+}
+
+.widget.theme-clean .widgetFrame::before {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.widget.theme-glass {
+  --widget-local-bg: linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  --widget-local-border: rgba(220, 240, 255, 0.28);
+  --widget-local-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+}
+
+.widget.theme-ocean {
+  --widget-local-bg: linear-gradient(to bottom, rgba(13, 57, 84, 0.74), rgba(5, 23, 38, 0.78));
+  --widget-local-border: rgba(107, 196, 255, 0.30);
+  --widget-local-shadow: 0 16px 34px rgba(0, 30, 54, 0.24);
+}
+
+.widget.theme-sunset {
+  --widget-local-bg: linear-gradient(to bottom, rgba(88, 42, 52, 0.72), rgba(37, 17, 28, 0.80));
+  --widget-local-border: rgba(255, 170, 125, 0.26);
+  --widget-local-shadow: 0 16px 34px rgba(40, 10, 18, 0.26);
+}
+
+.widget.theme-dynamic {
+  --widget-local-bg: rgba(8, 20, 29, 0.40);
+  --widget-local-border: rgba(140, 200, 230, 0.16);
+  --widget-local-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Better edit mode visibility for clean theme */
+body.layout-edit .widget.theme-clean {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Tiny widgets */
+#dividerWidget .widgetSettingsPanel,
+#layoutWidget .widgetSettingsPanel {
+  max-height: 380px;
+}
+
+/* Scrollbar */
+.widgetSettingsPanel::-webkit-scrollbar {
+  width: 10px;
+}
+
+.widgetSettingsPanel::-webkit-scrollbar-thumb {
+  background: rgba(125, 186, 220, 0.30);
+  border-radius: 20px;
+}
+
+.widgetSettingsPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.widgetFrame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.widget {
+  overflow: visible;
+}
+
+#layoutWidget {
+  left: 1680px;
+  top: 18px;
+  width: 190px;
+  height: 58px;
+  z-index: 99999 !important;
+}
+
+#layoutWidget .widgetHandle {
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  height: 20px;
+  border-radius: 10px 10px 0 0;
+  z-index: 120000;
+}
+
+#layoutWidget .widgetResize {
+  z-index: 120000;
+}
+
+#layoutWidget .widgetControls {
+  z-index: 120001;
+}
+
+#layoutWidget .widgetSettingsPanel {
+  z-index: 120002;
+  top: 52px;
+  right: 0;
+}
+
+#layoutWidget .layoutToggle {
+  position: relative;
+  z-index: 100000;
+}
