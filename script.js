@@ -11,6 +11,10 @@ const STORAGE_KEY = "marineDashboardLayoutV2";
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
+/* marine location for satellite compass */
+let marineLocationLat = null;
+let marineLocationLon = null;
+
 /* location defaults */
 let userLat = 29.938;
 let userLon = -81.302;
@@ -76,6 +80,7 @@ function init() {
 
   refreshAll();
   getLocation();
+  loadMarineLocation();
 
   setInterval(updateClockAndDate, 1000);
 
@@ -89,13 +94,26 @@ function init() {
    SCALE
    ========================================================================== */
  function setupDashboardScale() {
+  const stage = document.getElementById("dashboardStage");
   const dashboard = document.getElementById("dashboard");
 
   function applyScale() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    const scale = Math.min(vw / DASHBOARD_WIDTH, vh / DASHBOARD_HEIGHT);
+    const scale = vw / DASHBOARD_WIDTH;
+
+    const scaledW = DASHBOARD_WIDTH * scale;
+    const scaledH = DASHBOARD_HEIGHT * scale;
+
+    const offsetX = (vw - scaledW) / 2;
+    const offsetY = (vh - scaledH) / 2;
+
+    stage.style.width = "100vw";
+    stage.style.height = "100vh";
+    stage.style.left = "0px";
+    stage.style.top = "0px";
+    stage.style.overflow = "visible";
 
     dashboard.style.position = "absolute";
     dashboard.style.left = "0px";
@@ -106,7 +124,6 @@ function init() {
 
   window.addEventListener("resize", () => {
     applyScale();
-
     if (tidePredictions.length) {
       drawTide(tidePredictions);
     }
@@ -691,6 +708,25 @@ function attachEvents() {
       await loadWeather();
     });
   }
+
+
+const marineBtn = document.getElementById("marineAddressBtn");
+  if (marineBtn) {
+    marineBtn.addEventListener("click", () => {
+      const input = document.getElementById("marineAddressInput");
+      if (input && input.value.trim()) {
+        geocodeMarineAddress(input.value.trim());
+      }
+    });
+    const input = document.getElementById("marineAddressInput");
+    if (input) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && input.value.trim()) {
+          geocodeMarineAddress(input.value.trim());
+        }
+      });
+    }
+  }
 }
 
 /* ==========================================================================
@@ -819,6 +855,98 @@ function renderCurrentConditions(data) {
   if (windSpeed) windSpeed.textContent = `${wind} mph`;
   if (windDeg) windDeg.textContent = `${degToCompass(deg)} ${deg}°`;
   if (arrow) arrow.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+  updateCompassMap();
+}
+
+/* ==========================================================================
+   SATELLITE COMPASS MAP
+   ========================================================================== */
+function updateCompassMap() {
+  const canvas = document.getElementById("compassMapCanvas");
+  if (!canvas || !marineLocationLat || !marineLocationLon) return;
+
+  const size = 190;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  const zoom = 15;
+  const lat = marineLocationLat;
+  const lon = marineLocationLon;
+
+  const n = Math.pow(2, zoom);
+  const tileX = Math.floor((lon + 180) / 360 * n);
+  const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
+
+  const pixelX = Math.floor(((lon + 180) / 360 * n - tileX) * 256);
+  const pixelY = Math.floor(((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n - tileY) * 256);
+
+  const offsets = [-1, 0, 1];
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = "#0a1924";
+  ctx.fillRect(0, 0, size, size);
+
+  offsets.forEach(dy => {
+    offsets.forEach(dx => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY + dy}/${tileX + dx}`;
+
+      img.onload = () => {
+        const drawX = (size / 2 - pixelX) + dx * 256;
+        const drawY = (size / 2 - pixelY) + dy * 256;
+        ctx.drawImage(img, drawX, drawY, 256, 256);
+      };
+    });
+  });
+
+  ctx.restore();
+}
+
+async function geocodeMarineAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+
+    const res = await fetch(url, {
+      headers: { "Accept-Language": "en" }
+    });
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      marineLocationLat = parseFloat(data[0].lat);
+      marineLocationLon = parseFloat(data[0].lon);
+
+      localStorage.setItem("marineLocationLat", marineLocationLat);
+      localStorage.setItem("marineLocationLon", marineLocationLon);
+      localStorage.setItem("marineLocationAddress", address);
+
+      updateCompassMap();
+    } else {
+      alert("Address not found — try being more specific, e.g. '111 Avenida Menendez, St Augustine FL'");
+    }
+  } catch (err) {
+    console.error("Geocode error:", err);
+  }
+}
+
+function loadMarineLocation() {
+  const lat = localStorage.getItem("marineLocationLat");
+  const lon = localStorage.getItem("marineLocationLon");
+  const address = localStorage.getItem("marineLocationAddress");
+
+  if (lat && lon) {
+    marineLocationLat = parseFloat(lat);
+    marineLocationLon = parseFloat(lon);
+
+    const input = document.getElementById("marineAddressInput");
+    if (input && address) input.value = address;
+
+    updateCompassMap();
+  }
 }
 
 function renderWeather(data) {

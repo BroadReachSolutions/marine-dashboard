@@ -50,15 +50,14 @@ body.dashboard-flat-bg {
 
 #dashboardStage {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #dashboard {
   position: relative;
   width: calc(var(--dash-width) * 1px);
   height: calc(var(--dash-height) * 1px);
-  transform-origin: center center;
+  transform-origin: top left;
   background: transparent;
 }
 
@@ -547,6 +546,27 @@ body.layout-edit .widgetControls {
   position: relative;
 }
 
+#compassMapCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  opacity: 0.6;
+  z-index: 0;
+}
+
+.ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.arrow {
+  z-index: 2;
+}
 .ring {
   border: 3px solid rgba(160, 220, 255, 0.75);
   border-radius: 50%;
@@ -980,4 +1000,40 @@ body.layout-edit .widget.theme-clean {
 #layoutWidget .layoutToggle {
   position: relative;
   z-index: 100000;
+}
+
+/* Marina address input */
+.marineAddressWrap {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  width: 190px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.marineAddressWrap input {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(125,186,220,0.3);
+  border-radius: 8px;
+  color: #eef7ff;
+  padding: 5px 8px;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.marineAddressWrap button {
+  background: rgba(100,180,255,0.18);
+  border: 1px solid rgba(100,180,255,0.35);
+  border-radius: 8px;
+  color: #eef7ff;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.marineAddressWrap button:hover {
+  background: rgba(100,180,255,0.30);
 }
