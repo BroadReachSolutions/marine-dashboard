@@ -239,8 +239,8 @@ function makeWidgetInteractive(widget) {
     const dx = (e.clientX - dragStart.startX) / dragStart.scale;
     const dy = (e.clientY - dragStart.startY) / dragStart.scale;
 
-    const left = clamp(dragStart.left + dx, 0, DASHBOARD_WIDTH - widget.offsetWidth);
-    const top = clamp(dragStart.top + dy, 0, DASHBOARD_HEIGHT - widget.offsetHeight);
+    const left = dragStart.left + dx;
+    const top = dragStart.top + dy;
 
     widget.style.left = `${left}px`;
     widget.style.top = `${top}px`;
