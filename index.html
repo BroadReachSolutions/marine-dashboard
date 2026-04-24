@@ -463,7 +463,7 @@
             <div class="windBox">
               <div id="windSpeed"></div>
 
-              <div class="compass">
+              <div class="compass" id="compassWidget">
                 <div class="cardinal n">N</div>
                 <div class="cardinal e">E</div>
                 <div class="cardinal s">S</div>
@@ -475,11 +475,7 @@
                 <div class="deg" id="windDeg"></div>
               </div>
 
-              <div class="marineAddressWrap">
-                <input id="marineAddressInput" type="text" placeholder="Enter marina or boat address..." />
-                <button id="marineAddressBtn">Set</button>
-              </div>
-            </div>
+                          </div>
 
             <div class="widgetSettingsPanel" data-settings-for="wind">
               <div class="settingsHeader">
@@ -543,6 +539,34 @@
               <div class="settingsRow">
                 <label>Row 2 Alert Color</label>
                 <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
+              </div>
+
+             <div class="settingsRow">
+                <label>Marina Address</label>
+                <div style="display:flex;gap:6px;">
+                  <input id="marineAddressInput" type="text" placeholder="Enter marina address..." style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(125,186,220,0.3);border-radius:6px;color:#eef7ff;padding:4px 7px;font-size:12px;min-width:0;" />
+                  <button id="marineAddressBtn" type="button" style="background:rgba(100,180,255,0.18);border:1px solid rgba(100,180,255,0.35);border-radius:6px;color:#eef7ff;padding:4px 9px;font-size:12px;cursor:pointer;white-space:nowrap;">Set</button>
+                </div>
+              </div>
+
+              <div class="settingsRow">
+                <label>Map Zoom</label>
+                <input type="range" id="compassZoom" min="12" max="18" value="15" style="width:100%;" />
+                <span id="compassZoomLabel" style="font-size:11px;color:#aac;">15</span>
+              </div>
+
+              <div class="settingsRow">
+                <label>Map Display</label>
+                <select id="compassMapMode">
+                  <option value="compass">Inside compass only</option>
+                  <option value="widget">Fill entire widget</option>
+                </select>
+              </div>
+
+              <div class="settingsRow">
+                <label>Compass Size</label>
+                <input type="range" id="compassSizeSlider" min="120" max="400" value="190" style="width:100%;" />
+                <span id="compassSizeLabel" style="font-size:11px;color:#aac;">190px</span>
               </div>
 
               <div class="settingsActions">

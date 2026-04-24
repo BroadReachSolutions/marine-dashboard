@@ -14,7 +14,9 @@ const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 /* marine location for satellite compass */
 let marineLocationLat = null;
 let marineLocationLon = null;
-
+let compassZoom = 15;
+let compassMapMode = "compass"; // "compass" or "widget"
+let compassSize = 190;
 /* location defaults */
 let userLat = 29.938;
 let userLon = -81.302;
@@ -81,6 +83,7 @@ function init() {
   refreshAll();
   getLocation();
   loadMarineLocation();
+  attachCompassSettingsEvents();
 
   setInterval(updateClockAndDate, 1000);
 
@@ -859,52 +862,195 @@ function renderCurrentConditions(data) {
 }
 
 /* ==========================================================================
-   SATELLITE COMPASS MAP
+   SATELLITE COMPASS
    ========================================================================== */
 function updateCompassMap() {
   const canvas = document.getElementById("compassMapCanvas");
+  const compassEl = document.getElementById("compassWidget");
   if (!canvas || !marineLocationLat || !marineLocationLon) return;
 
-  const size = 190;
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
+  const size = compassSize;
 
-  const zoom = 15;
+  /* Resize compass element if needed */
+  if (compassEl) {
+    compassEl.style.width = `${size}px`;
+    compassEl.style.height = `${size}px`;
+  }
+
+  /* Set canvas size to match mode */
+  if (compassMapMode === "widget") {
+    const widgetEl = document.getElementById("windWidget");
+    canvas.width = widgetEl ? widgetEl.offsetWidth : size;
+    canvas.height = widgetEl ? widgetEl.offsetHeight : size;
+    canvas.style.width = canvas.width + "px";
+    canvas.style.height = canvas.height + "px";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.classList.add("fillWidget");
+  } else {
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = size + "px";
+    canvas.style.height = size + "px";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.classList.remove("fillWidget");
+  }
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+
+  const zoom = compassZoom;
   const lat = marineLocationLat;
   const lon = marineLocationLon;
 
+  /* lat/lon to tile coords */
   const n = Math.pow(2, zoom);
   const tileX = Math.floor((lon + 180) / 360 * n);
-  const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
+  const latRad = lat * Math.PI / 180;
+  const tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
 
+  /* pixel offset of our exact location within the center tile */
   const pixelX = Math.floor(((lon + 180) / 360 * n - tileX) * 256);
-  const pixelY = Math.floor(((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n - tileY) * 256);
+  const pixelY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY) * 256);
 
-  const offsets = [-1, 0, 1];
-
+  /* clip to circle for compass mode, rounded rect for widget mode */
   ctx.save();
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  if (compassMapMode === "compass") {
+    ctx.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2);
+  } else {
+    ctx.roundRect(0, 0, w, h, 8);
+  }
   ctx.clip();
   ctx.fillStyle = "#0a1924";
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, w, h);
 
-  offsets.forEach(dy => {
-    offsets.forEach(dx => {
+  /* draw 3x3 grid of tiles — north always up since we never rotate */
+  [-1, 0, 1].forEach(dy => {
+    [-1, 0, 1].forEach(dx => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY + dy}/${tileX + dx}`;
-
       img.onload = () => {
-        const drawX = (size / 2 - pixelX) + dx * 256;
-        const drawY = (size / 2 - pixelY) + dy * 256;
+        const drawX = (w / 2 - pixelX) + dx * 256;
+        const drawY = (h / 2 - pixelY) + dy * 256;
         ctx.drawImage(img, drawX, drawY, 256, 256);
       };
     });
   });
 
   ctx.restore();
+}
+
+async function geocodeMarineAddress(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      marineLocationLat = parseFloat(data[0].lat);
+      marineLocationLon = parseFloat(data[0].lon);
+      localStorage.setItem("marineLocationLat", marineLocationLat);
+      localStorage.setItem("marineLocationLon", marineLocationLon);
+      localStorage.setItem("marineLocationAddress", address);
+      updateCompassMap();
+    } else {
+      alert("Address not found — try being more specific, e.g. '111 Avenida Menendez, St Augustine FL'");
+    }
+  } catch (err) {
+    console.error("Geocode error:", err);
+  }
+}
+
+function loadMarineLocation() {
+  const lat = localStorage.getItem("marineLocationLat");
+  const lon = localStorage.getItem("marineLocationLon");
+  const address = localStorage.getItem("marineLocationAddress");
+  const savedZoom = localStorage.getItem("compassZoom");
+  const savedMode = localStorage.getItem("compassMapMode");
+  const savedSize = localStorage.getItem("compassSize");
+
+  if (savedZoom) {
+    compassZoom = parseInt(savedZoom);
+    const zSlider = document.getElementById("compassZoom");
+    const zLabel = document.getElementById("compassZoomLabel");
+    if (zSlider) zSlider.value = compassZoom;
+    if (zLabel) zLabel.textContent = compassZoom;
+  }
+
+  if (savedMode) {
+    compassMapMode = savedMode;
+    const modeSelect = document.getElementById("compassMapMode");
+    if (modeSelect) modeSelect.value = compassMapMode;
+  }
+
+  if (savedSize) {
+    compassSize = parseInt(savedSize);
+    const sSlider = document.getElementById("compassSizeSlider");
+    const sLabel = document.getElementById("compassSizeLabel");
+    if (sSlider) sSlider.value = compassSize;
+    if (sLabel) sLabel.textContent = compassSize + "px";
+  }
+
+  if (lat && lon) {
+    marineLocationLat = parseFloat(lat);
+    marineLocationLon = parseFloat(lon);
+    const input = document.getElementById("marineAddressInput");
+    if (input && address) input.value = address;
+    updateCompassMap();
+  }
+}
+
+function attachCompassSettingsEvents() {
+  const marineBtn = document.getElementById("marineAddressBtn");
+  if (marineBtn) {
+    marineBtn.addEventListener("click", () => {
+      const input = document.getElementById("marineAddressInput");
+      if (input && input.value.trim()) geocodeMarineAddress(input.value.trim());
+    });
+  }
+
+  const addressInput = document.getElementById("marineAddressInput");
+  if (addressInput) {
+    addressInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && addressInput.value.trim()) {
+        geocodeMarineAddress(addressInput.value.trim());
+      }
+    });
+  }
+
+  const zoomSlider = document.getElementById("compassZoom");
+  if (zoomSlider) {
+    zoomSlider.addEventListener("input", () => {
+      compassZoom = parseInt(zoomSlider.value);
+      document.getElementById("compassZoomLabel").textContent = compassZoom;
+      localStorage.setItem("compassZoom", compassZoom);
+      updateCompassMap();
+    });
+  }
+
+  const modeSelect = document.getElementById("compassMapMode");
+  if (modeSelect) {
+    modeSelect.addEventListener("change", () => {
+      compassMapMode = modeSelect.value;
+      localStorage.setItem("compassMapMode", compassMapMode);
+      updateCompassMap();
+    });
+  }
+
+  const sizeSlider = document.getElementById("compassSizeSlider");
+  if (sizeSlider) {
+    sizeSlider.addEventListener("input", () => {
+      compassSize = parseInt(sizeSlider.value);
+      document.getElementById("compassSizeLabel").textContent = compassSize + "px";
+      localStorage.setItem("compassSize", compassSize);
+      updateCompassMap();
+    });
+  }
 }
 
 async function geocodeMarineAddress(address) {

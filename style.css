@@ -1037,3 +1037,34 @@ body.layout-edit .widget.theme-clean {
 .marineAddressWrap button:hover {
   background: rgba(100,180,255,0.30);
 }
+
+/* === SATELLITE COMPASS ================================================== */
+#compassMapCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  opacity: 0.65;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#compassWidget {
+  position: relative;
+  transition: width 0.2s, height 0.2s;
+}
+
+.compass .ring  { position: relative; z-index: 1; }
+.compass .arrow { z-index: 2; }
+.compass .deg   { z-index: 2; }
+.compass .cardinal { z-index: 3; }
+
+/* when map fills the whole widget */
+#compassMapCanvas.fillWidget {
+  border-radius: 8px;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.45;
+}
