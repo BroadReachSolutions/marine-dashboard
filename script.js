@@ -879,13 +879,16 @@ function updateCompassMap() {
 
   /* Set canvas size to match mode */
   if (compassMapMode === "widget") {
-    const widgetEl = document.getElementById("windWidget");
-    canvas.width = widgetEl ? widgetEl.offsetWidth : size;
-    canvas.height = widgetEl ? widgetEl.offsetHeight : size;
-    canvas.style.width = canvas.width + "px";
-    canvas.style.height = canvas.height + "px";
+    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
+    const w2 = widgetFrame ? widgetFrame.offsetWidth : size;
+    const h2 = widgetFrame ? widgetFrame.offsetHeight : size;
+    canvas.width = w2;
+    canvas.height = h2;
+    canvas.style.width = w2 + "px";
+    canvas.style.height = h2 + "px";
     canvas.style.top = "0";
     canvas.style.left = "0";
+    canvas.style.borderRadius = "8px";
     canvas.classList.add("fillWidget");
   } else {
     canvas.width = size;

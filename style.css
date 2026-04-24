@@ -1049,6 +1049,13 @@ body.layout-edit .widget.theme-clean {
   pointer-events: none;
 }
 
+#compassMapCanvas.fillWidget {
+  border-radius: 8px;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.45;
+  z-index: 0;
+}
 #compassWidget {
   position: relative;
   transition: width 0.2s, height 0.2s;
