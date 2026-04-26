@@ -842,8 +842,7 @@ async function fetchAllNoaaStations() {
     const stations = (data.stations || [])
       .filter(s =>
         s.lat != null &&
-        s.lng != null &&
-        s.tidal === true
+        s.lng != null
       )
       .map(s => ({
         id: s.id,
