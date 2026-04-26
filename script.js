@@ -82,11 +82,7 @@ function init() {
   loadAllSettings();
   applyAllWidgetSettings();
 
-  loadMarineLocation();
-  attachCompassSettingsEvents();
-
-  refreshAll();
-  getLocation();
+  beneteau 45 2018
 
   setInterval(updateClockAndDate, 1000);
 
@@ -95,6 +91,7 @@ function init() {
     if (tideViewMode === "live") loadTides();
   }, 60000);
 }
+
 /* ==========================================================================
    SCALE
    ========================================================================== */
@@ -1064,7 +1061,7 @@ async function geocodeMarineAddress(address) {
   }
 }
 
-function loadMarineLocation() {
+async function loadMarineLocation() {
   const lat = localStorage.getItem("marineLocationLat");
   const lon = localStorage.getItem("marineLocationLon");
   const address = localStorage.getItem("marineLocationAddress");
@@ -1104,9 +1101,9 @@ function loadMarineLocation() {
     if (input && address) input.value = address;
     updateCompassMap();
 
-    fetchAllNoaaStations().then(stations => {
+    await fetchAllNoaaStations().then(stations => {
       allNoaaStations = stations;
-      updateNearbyStations(marineLocationLat, marineLocationLon);
+      return updateNearbyStations(marineLocationLat, marineLocationLon);
     });
   }
 }
