@@ -67,7 +67,7 @@ init();
 /* ==========================================================================
    INIT
    ========================================================================== */
-function init() {
+async function init() {
   setupDashboardScale();
   setupLayoutEditor();
   setupDateControls();
@@ -85,11 +85,10 @@ function init() {
   attachCompassSettingsEvents();
   refreshAll();
 
-  loadMarineLocation().then(() => {
-    if (!marineLocationLat || !marineLocationLon) {
-      getLocation();
-    }
-  });
+  await loadMarineLocation();
+  if (!marineLocationLat || !marineLocationLon) {
+    getLocation();
+  }
 
   setInterval(updateClockAndDate, 1000);
 
