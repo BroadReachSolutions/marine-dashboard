@@ -1113,6 +1113,8 @@ async function loadMarineLocation() {
       return updateNearbyStations(marineLocationLat, marineLocationLon);
     });
   }
+
+  return Promise.resolve();
 }
 
 function attachCompassSettingsEvents() {
