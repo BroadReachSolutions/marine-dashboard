@@ -82,7 +82,14 @@ function init() {
   loadAllSettings();
   applyAllWidgetSettings();
 
-  beneteau 45 2018
+  attachCompassSettingsEvents();
+  refreshAll();
+
+  loadMarineLocation().then(() => {
+    if (!marineLocationLat || !marineLocationLon) {
+      getLocation();
+    }
+  });
 
   setInterval(updateClockAndDate, 1000);
 
