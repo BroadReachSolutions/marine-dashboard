@@ -85,7 +85,7 @@ body.dashboard-flat-bg {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .widget {
@@ -519,62 +519,73 @@ body.layout-edit .widgetControls {
   font-family: var(--row2-font);
 }
 
-/* Wind widget */
+
+/* === COMPASS SYSTEM ===================================================== */
+/* === COMPASS SYSTEM ===================================================== */
 .windBox {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
   height: 100%;
-  text-align: center;
-  padding-top: 14px;
+  gap: 6px;
+  padding: 8px;
   box-sizing: border-box;
-}
-
-#windSpeed {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--row1-color);
-  font-family: var(--row1-font);
-  margin-bottom: 8px;
-}
-
-.compass {
-  width: 190px;
-  height: 190px;
-  margin: 12px auto 44px auto;
+  overflow: hidden;
   position: relative;
 }
 
-#compassMapCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 190px;
-  height: 190px;
-  border-radius: 50%;
-  opacity: 0.6;
-  z-index: 0;
-}
-
-.ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-}
-
-.arrow {
-  z-index: 2;
-}
-.ring {
-  border: 3px solid rgba(160, 220, 255, 0.75);
-  border-radius: 50%;
+.windReadings {
+  text-align: center;
   width: 100%;
-  height: 100%;
-  box-shadow:
-    0 0 18px rgba(84, 180, 255, 0.14),
-    inset 0 0 14px rgba(84, 180, 255, 0.06);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+}
+
+.windReadingLine {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--row1-color);
+  font-family: var(--row1-font);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.windDir {
+  text-align: center;
+  width: 100%;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.windReadingDir {
+  font-size: 16px;
+  color: var(--row2-color);
+  font-family: var(--row2-font);
+  line-height: 1.2;
+}
+
+.compassOuter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.compassCardinals {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .cardinal {
@@ -583,37 +594,92 @@ body.layout-edit .widgetControls {
   font-weight: 700;
   color: var(--row2-color);
   font-family: var(--row2-font);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
 }
 
-.n { top: -20px; left: 50%; transform: translateX(-50%); }
-.s { bottom: -24px; left: 50%; transform: translateX(-50%); }
-.e { right: -20px; top: 50%; transform: translateY(-50%); }
-.w { left: -20px; top: 50%; transform: translateY(-50%); }
+.compass {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+#compassMapCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: 0.65;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+
+#compassMapCanvas.fillWidget {
+  border-radius: 8px;
+  opacity: 0.45;
+}
+
+.ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 1;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.compassStyle-ring .ring {
+  border: 3px solid rgba(160, 220, 255, 0.75);
+  box-shadow: 0 0 18px rgba(84,180,255,0.14), inset 0 0 14px rgba(84,180,255,0.06);
+}
+
+.compassStyle-crosshair .ring {
+  border: 2px solid rgba(160, 220, 255, 0.5);
+}
+.compassStyle-crosshair .ring::before,
+.compassStyle-crosshair .ring::after {
+  content: "";
+  position: absolute;
+  background: rgba(160, 220, 255, 0.3);
+}
+.compassStyle-crosshair .ring::before {
+  width: 1px; height: 100%; left: 50%; top: 0;
+}
+.compassStyle-crosshair .ring::after {
+  height: 1px; width: 100%; top: 50%; left: 0;
+}
+
+.compassStyle-nautical .ring {
+  border: 3px solid rgba(255, 200, 100, 0.7);
+  box-shadow: 0 0 18px rgba(255,200,100,0.15), inset 0 0 14px rgba(255,200,100,0.07);
+}
+
+.compassStyle-minimal .ring {
+  border: 1px solid rgba(160, 220, 255, 0.3);
+  box-shadow: none;
+}
 
 .arrow {
   position: absolute;
   width: 6px;
-  height: 80px;
   background: linear-gradient(to top, #ff7b54, #ffb08a);
-  top: 14px;
+  top: 10%;
   left: 50%;
   transform-origin: bottom center;
   border-radius: 3px;
-  box-shadow: 0 0 10px rgba(255, 140, 100, 0.35);
+  box-shadow: 0 0 10px rgba(255,140,100,0.35);
   margin-left: -3px;
+  z-index: 2;
 }
 
-.deg {
-  position: absolute;
-  bottom: -60px;
-  width: 100%;
-  text-align: center;
-  color: var(--row2-color);
-  font-size: 24px;
-  font-weight: 600;
-  font-family: var(--row2-font);
-}
-
+.deg { display: none; }
 /* Tide status widget */
 .lowTideAlert {
   min-height: 26px;
@@ -1074,4 +1140,43 @@ body.layout-edit .widget.theme-clean {
   width: 100% !important;
   height: 100% !important;
   opacity: 0.45;
+}
+
+/* === DRAGGABLE SETTINGS PANEL =========================================== */
+.widgetSettingsPanel.is-detached {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  max-height: 80vh;
+  z-index: 99999;
+  cursor: default;
+}
+
+.widgetSettingsPanel.is-detached .settingsHeader {
+  cursor: grab;
+}
+
+.widgetSettingsPanel.is-detached .settingsHeader:active {
+  cursor: grabbing;
+}
+
+.settingsDragBtn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  background: rgba(100,180,255,0.15);
+  border: 1px solid rgba(100,180,255,0.3);
+  border-radius: 6px;
+  color: #eef7ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.windSep {
+  opacity: 0.4;
+  font-weight: 300;
+  margin: 0 2px;
 }

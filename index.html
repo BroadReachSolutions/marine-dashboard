@@ -453,28 +453,32 @@
         </div>
 
         <div class="widget" data-widget="wind" id="windWidget">
-          <div class="widgetFrame">
-            <canvas id="compassMapCanvas"></canvas>
+          <div class="widgetFrame">     
             <div class="widgetControls">
               <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
 
-            <div class="windBox">
-              <div id="windSpeed"></div>
+         <div class="windBox">
+              <div class="windReadings" id="windReadings"></div>
 
-              <div class="compass" id="compassWidget">
-                <div class="cardinal n">N</div>
-                <div class="cardinal e">E</div>
-                <div class="cardinal s">S</div>
-                <div class="cardinal w">W</div>
-
-              
-                <div class="ring"></div>
-                <div class="arrow" id="windArrow"></div>
-                <div class="deg" id="windDeg"></div>
+              <div class="compassOuter" id="compassOuter">
+                <div class="compassCardinals" id="compassCardinals">
+                  <div class="cardinal" id="cardinalN">N</div>
+                  <div class="cardinal" id="cardinalE">E</div>
+                  <div class="cardinal" id="cardinalS">S</div>
+                  <div class="cardinal" id="cardinalW">W</div>
+                </div>
+                <div class="compass" id="compassWidget">
+                  <canvas id="compassMapCanvas"></canvas>
+                  <div class="ring" id="compassRing"></div>
+                  <div class="arrow" id="windArrow"></div>
+                </div>
               </div>
+
+              <div class="windDir" id="windDir"></div>
+            </div>
 
                           </div>
 
@@ -516,12 +520,7 @@
                 <input type="color" class="fontColorInput" data-target="row1Color" value="#d9f2ff">
               </div>
 
-              <div class="settingsRow">
-                <label>Row 1 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
-              </div>
-
-              <div class="settingsRow">
+                            <div class="settingsRow">
                 <label>Row 2 Font</label>
                 <select class="fontSelect" data-target="row2Font">
                   <option value="Segoe UI">Segoe UI</option>
@@ -537,11 +536,7 @@
                 <input type="color" class="fontColorInput" data-target="row2Color" value="#b9dcec">
               </div>
 
-              <div class="settingsRow">
-                <label>Row 2 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
-              </div>
-
+              
              <div class="settingsRow">
                 <label>Marina Address</label>
                 <div style="display:flex;gap:6px;">
@@ -559,21 +554,61 @@
               <div class="settingsRow">
                 <label>Map Display</label>
                 <select id="compassMapMode">
+                  <option value="none">No map</option>
                   <option value="compass">Inside compass only</option>
                   <option value="widget">Fill entire widget</option>
                 </select>
               </div>
 
+              
               <div class="settingsRow">
-                <label>Compass Size</label>
-                <input type="range" id="compassSizeSlider" min="120" max="400" value="190" style="width:100%;" />
-                <span id="compassSizeLabel" style="font-size:11px;color:#aac;">190px</span>
+                <label>Cardinal Distance</label>
+                <input type="range" id="cardinalOffset" min="0" max="60" value="20" style="width:100%;" />
+                <span id="cardinalOffsetLabel" style="font-size:11px;color:#aac;">20px</span>
               </div>
 
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+              <div class="settingsRow">
+                <label>Compass Style</label>
+                <select id="compassStyle">
+                  <option value="ring">Ring</option>
+                  <option value="crosshair">Crosshair</option>
+                  <option value="nautical">Nautical</option>
+                  <option value="minimal">Minimal</option>
+                </select>
               </div>
-            </div>
+
+              <div class="settingsRow">
+                <label>Show Wind Info</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+                    <input type="checkbox" id="showWindMph" checked /> mph |
+                  </label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+                    <input type="checkbox" id="showWindKph" /> kph
+                  </label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+                    <input type="checkbox" id="showWindKnots" /> knots
+                  </label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
+                    <input type="checkbox" id="showWindDir" checked /> direction
+                  </label>
+                </div>
+              </div>
+
+              <div class="settingsRow">
+                <label>Speed Offset</label>
+                <input type="range" id="windTopOffset" min="-80" max="80" value="0" style="width:100%;" />
+                <span id="windTopOffsetLabel" style="font-size:11px;color:#aac;">0px</span>
+              </div>
+
+              <div class="settingsRow">
+                <label>Direction Offset</label>
+                <input type="range" id="windBotOffset" min="-80" max="80" value="0" style="width:100%;" />
+                <span id="windBotOffsetLabel" style="font-size:11px;color:#aac;">0px</span>
+              </div>
+
+            
+                         </div>
 
             <div class="widgetResize"></div>
           </div>

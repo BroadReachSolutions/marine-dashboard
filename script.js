@@ -21,6 +21,16 @@ let marineLocationLon = null;
 let compassZoom = 15;
 let compassMapMode = "compass";
 let compassSize = 190;
+let compassStyle = "ring";
+let cardinalOffset = 20;
+let showWindMph = true;
+let showWindKph = false;
+let showWindKnots = false;
+let showWindDir = true;
+let lastWindMph = 0;
+let lastWindDeg = 0;
+let windTopOffset = 0;
+let windBotOffset = 0;
 
 /* NOAA full station list cache */
 let allNoaaStations = null;
@@ -83,6 +93,7 @@ async function init() {
   applyAllWidgetSettings();
 
   attachCompassSettingsEvents();
+  makeSettingsPanelsDraggable();
   refreshAll();
 
   await loadMarineLocation();
@@ -351,12 +362,23 @@ function setupWidgetSettingsSystem() {
       });
     }
 
-    /* close settings */
-    const closeBtn = widget.querySelector(".closeSettingsBtn");
+  /* close settings */
+    const settingsPanel = widget.querySelector(".widgetSettingsPanel");
+    const closeBtn = settingsPanel
+      ? settingsPanel.querySelector(".closeSettingsBtn")
+      : widget.querySelector(".closeSettingsBtn");
     if (closeBtn) {
       closeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         widget.classList.remove("show-settings");
+        if (settingsPanel) {
+          settingsPanel.style.display = "";
+          settingsPanel.classList.remove("is-detached");
+          /* move back into widget if it was detached to body */
+          if (settingsPanel.parentElement === document.body) {
+            widget.appendChild(settingsPanel);
+          }
+        }
       });
     }
 
@@ -908,28 +930,94 @@ async function loadWeather() {
 function renderCurrentConditions(data) {
   const nowHour = new Date().getHours();
   const idx = data.hourly.time.findIndex(t => new Date(t).getHours() === nowHour);
-
   const i = idx >= 0 ? idx : 0;
 
   const temp = Math.round(data.hourly.temperature_2m[i]);
   const humidity = Math.round(data.hourly.relative_humidity_2m[i]);
-  const wind = Math.round(data.hourly.windspeed_10m[i]);
-  const deg = Math.round(data.hourly.winddirection_10m[i]);
+  lastWindMph = Math.round(data.hourly.windspeed_10m[i]);
+  lastWindDeg = Math.round(data.hourly.winddirection_10m[i]);
 
   const tempMain = document.getElementById("tempMain");
   const tempSub = document.getElementById("tempSub");
-
   if (tempMain) tempMain.textContent = `${temp}°`;
   if (tempSub) tempSub.textContent = `${humidity}% Humidity`;
 
-  const windSpeed = document.getElementById("windSpeed");
-  const windDeg = document.getElementById("windDeg");
-  const arrow = document.getElementById("windArrow");
-
-  if (windSpeed) windSpeed.textContent = `${wind} mph`;
-  if (windDeg) windDeg.textContent = `${degToCompass(deg)} ${deg}°`;
-  if (arrow) arrow.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+  renderWindReadings();
+  renderCompass();
   updateCompassMap();
+}
+function renderWindReadings() {
+  const topEl = document.getElementById("windReadings");
+  const botEl = document.getElementById("windDir");
+
+  const mph = lastWindMph;
+  const kph = Math.round(mph * 1.60934);
+  const knots = Math.round(mph * 0.868976);
+
+  const parts = [];
+  if (showWindMph) parts.push(`${mph} mph`);
+  if (showWindKph) parts.push(`${kph} kph`);
+  if (showWindKnots) parts.push(`${knots} kts`);
+
+  if (topEl) {
+    topEl.innerHTML = parts.length
+      ? `<div class="windReadingLine">${parts.join(' <span class="windSep">|</span> ')}</div>`
+      : "";
+    topEl.style.transform = `translateY(${windTopOffset}px)`;
+  }
+
+  let botHtml = "";
+  if (showWindDir) botHtml = `<div class="windReadingDir">${degToCompass(lastWindDeg)} ${lastWindDeg}°</div>`;
+  if (botEl) {
+    botEl.innerHTML = botHtml;
+    botEl.style.transform = `translateY(${windBotOffset}px)`;
+  }
+}
+
+function renderCompass() {
+  const compassEl = document.getElementById("compassWidget");
+  const outer = document.getElementById("compassOuter");
+  const arrow = document.getElementById("windArrow");
+  const cardinals = document.getElementById("compassCardinals");
+  if (!compassEl) return;
+
+  const size = compassSize;
+
+  /* size the compass circle */
+  compassEl.style.width = `${size}px`;
+  compassEl.style.height = `${size}px`;
+if (outer) {
+    outer.style.width = `${size}px`;
+    outer.style.height = `${size}px`;
+  }
+
+  /* size the arrow proportionally */
+  if (arrow) {
+    const arrowH = Math.round(size * 0.42);
+    arrow.style.height = `${arrowH}px`;
+    arrow.style.top = `${Math.round(size * 0.08)}px`;
+    arrow.style.transform = `translateX(-50%) rotate(${lastWindDeg}deg)`;
+  }
+
+  /* apply compass style class */
+  if (compassEl) {
+    compassEl.className = `compass compassStyle-${compassStyle}`;
+    compassEl.id = "compassWidget";
+  }
+
+  /* position cardinals based on offset */
+  if (cardinals) {
+    const r = size / 2 + cardinalOffset;
+    const n = document.getElementById("cardinalN");
+    const s = document.getElementById("cardinalS");
+    const e = document.getElementById("cardinalE");
+    const w = document.getElementById("cardinalW");
+
+    if (n) { n.style.left = "50%"; n.style.top = `calc(50% - ${r}px)`; }
+    if (s) { s.style.left = "50%"; s.style.top = `calc(50% + ${r}px)`; }
+    if (e) { e.style.left = `calc(50% + ${r}px)`; e.style.top = "50%"; }
+    if (w) { w.style.left = `calc(50% - ${r}px)`; w.style.top = "50%"; }
+  }
 }
 
 /* ==========================================================================
@@ -938,36 +1026,47 @@ function renderCurrentConditions(data) {
 function updateCompassMap() {
   const canvas = document.getElementById("compassMapCanvas");
   const compassEl = document.getElementById("compassWidget");
+  const widgetFrame = document.querySelector("#windWidget .widgetFrame");
   if (!canvas || !marineLocationLat || !marineLocationLon) return;
 
   const size = compassSize;
 
-  /* Resize compass element if needed */
-  if (compassEl) {
-    compassEl.style.width = `${size}px`;
-    compassEl.style.height = `${size}px`;
+  if (compassMapMode === "none") {
+    canvas.style.display = "none";
+    return;
   }
+  canvas.style.display = "block";
 
-  /* Set canvas size to match mode */
-  if (compassMapMode === "widget") {
-    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
-    const w2 = widgetFrame ? widgetFrame.offsetWidth : size;
-    const h2 = widgetFrame ? widgetFrame.offsetHeight : size;
+  if (compassMapMode === "widget" && widgetFrame) {
+    const w2 = widgetFrame.offsetWidth;
+    const h2 = widgetFrame.offsetHeight;
     canvas.width = w2;
     canvas.height = h2;
     canvas.style.width = w2 + "px";
     canvas.style.height = h2 + "px";
+    canvas.style.position = "absolute";
     canvas.style.top = "0";
     canvas.style.left = "0";
     canvas.style.borderRadius = "8px";
+
+    /* move canvas to widgetFrame level */
+    if (canvas.parentElement !== widgetFrame) {
+      widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
+    }
     canvas.classList.add("fillWidget");
   } else {
+    /* compass mode — canvas stays inside .compass */
+    if (canvas.parentElement !== compassEl) {
+      compassEl.insertBefore(canvas, compassEl.firstChild);
+    }
     canvas.width = size;
     canvas.height = size;
-    canvas.style.width = size + "px";
-    canvas.style.height = size + "px";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.position = "absolute";
     canvas.style.top = "0";
     canvas.style.left = "0";
+    canvas.style.borderRadius = "50%";
     canvas.classList.remove("fillWidget");
   }
 
@@ -980,21 +1079,17 @@ function updateCompassMap() {
   const lat = marineLocationLat;
   const lon = marineLocationLon;
 
-  /* lat/lon to tile coords */
   const n = Math.pow(2, zoom);
   const tileX = Math.floor((lon + 180) / 360 * n);
   const latRad = lat * Math.PI / 180;
   const tileY = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
-
-  /* pixel offset of our exact location within the center tile */
   const pixelX = Math.floor(((lon + 180) / 360 * n - tileX) * 256);
   const pixelY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY) * 256);
 
-  /* clip to circle for compass mode, rounded rect for widget mode */
   ctx.save();
   ctx.beginPath();
   if (compassMapMode === "compass") {
-    ctx.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2);
+    ctx.roundRect(0, 0, w, h, 8);
   } else {
     ctx.roundRect(0, 0, w, h, 8);
   }
@@ -1002,7 +1097,6 @@ function updateCompassMap() {
   ctx.fillStyle = "#0a1924";
   ctx.fillRect(0, 0, w, h);
 
-  /* draw 3x3 grid of tiles — north always up since we never rotate */
   [-1, 0, 1].forEach(dy => {
     [-1, 0, 1].forEach(dx => {
       const img = new Image();
@@ -1019,52 +1113,6 @@ function updateCompassMap() {
   ctx.restore();
 }
 
-async function geocodeMarineAddress(address) {
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-    const data = await res.json();
-
-    if (data && data.length > 0) {
-      marineLocationLat = parseFloat(data[0].lat);
-      marineLocationLon = parseFloat(data[0].lon);
-      localStorage.setItem("marineLocationLat", marineLocationLat);
-      localStorage.setItem("marineLocationLon", marineLocationLon);
-      localStorage.setItem("marineLocationAddress", address);
-
-      updateCompassMap();
-
-      /* update nearby stations to match marina address */
-      userLat = marineLocationLat;
-      userLon = marineLocationLon;
-
-      if (!allNoaaStations) allNoaaStations = await fetchAllNoaaStations();
-
-      nearbyStations = (allNoaaStations || LOCAL_STATIONS)
-        .map(s => ({
-          ...s,
-          distance: haversineMiles(userLat, userLon, s.lat, s.lon)
-        }))
-        .filter(s => !isNaN(s.distance))
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 5);
-
-      if (nearbyStations.length === 0) nearbyStations = [...LOCAL_STATIONS];
-
-      populateStationDropdown();
-      selectedStation = nearbyStations[0];
-
-      const select = document.getElementById("stationSelect");
-      if (select) select.value = selectedStation.id;
-
-      await refreshAll();
-    } else {
-      alert("Address not found — try being more specific, e.g. '111 Avenida Menendez, St Augustine FL'");
-    }
-  } catch (err) {
-    console.error("Geocode error:", err);
-  }
-}
 
 async function loadMarineLocation() {
   const lat = localStorage.getItem("marineLocationLat");
@@ -1073,27 +1121,79 @@ async function loadMarineLocation() {
   const savedZoom = localStorage.getItem("compassZoom");
   const savedMode = localStorage.getItem("compassMapMode");
   const savedSize = localStorage.getItem("compassSize");
+  const savedStyle = localStorage.getItem("compassStyle");
+  const savedCardinalOffset = localStorage.getItem("cardinalOffset");
+  const savedShowMph = localStorage.getItem("showWindMph");
+  const savedShowKph = localStorage.getItem("showWindKph");
+  const savedShowKnots = localStorage.getItem("showWindKnots");
+  const savedShowDir = localStorage.getItem("showWindDir");
+  const savedTopOffset = localStorage.getItem("windTopOffset");
+  const savedBotOffset = localStorage.getItem("windBotOffset");
 
   if (savedZoom) {
     compassZoom = parseInt(savedZoom);
-    const zSlider = document.getElementById("compassZoom");
-    const zLabel = document.getElementById("compassZoomLabel");
-    if (zSlider) zSlider.value = compassZoom;
-    if (zLabel) zLabel.textContent = compassZoom;
+    const el = document.getElementById("compassZoom");
+    const label = document.getElementById("compassZoomLabel");
+    if (el) el.value = compassZoom;
+    if (label) label.textContent = compassZoom;
   }
-
   if (savedMode) {
     compassMapMode = savedMode;
-    const modeSelect = document.getElementById("compassMapMode");
-    if (modeSelect) modeSelect.value = compassMapMode;
+    const el = document.getElementById("compassMapMode");
+    if (el) el.value = compassMapMode;
   }
-
   if (savedSize) {
     compassSize = parseInt(savedSize);
-    const sSlider = document.getElementById("compassSizeSlider");
-    const sLabel = document.getElementById("compassSizeLabel");
-    if (sSlider) sSlider.value = compassSize;
-    if (sLabel) sLabel.textContent = compassSize + "px";
+    const el = document.getElementById("compassSizeSlider");
+    const label = document.getElementById("compassSizeLabel");
+    if (el) el.value = compassSize;
+    if (label) label.textContent = compassSize + "px";
+  }
+  if (savedStyle) {
+    compassStyle = savedStyle;
+    const el = document.getElementById("compassStyle");
+    if (el) el.value = compassStyle;
+  }
+  if (savedCardinalOffset) {
+    cardinalOffset = parseInt(savedCardinalOffset);
+    const el = document.getElementById("cardinalOffset");
+    const label = document.getElementById("cardinalOffsetLabel");
+    if (el) el.value = cardinalOffset;
+    if (label) label.textContent = cardinalOffset + "px";
+  }
+  if (savedShowMph !== null) {
+    showWindMph = savedShowMph === "1";
+    const el = document.getElementById("showWindMph");
+    if (el) el.checked = showWindMph;
+  }
+  if (savedShowKph !== null) {
+    showWindKph = savedShowKph === "1";
+    const el = document.getElementById("showWindKph");
+    if (el) el.checked = showWindKph;
+  }
+  if (savedShowKnots !== null) {
+    showWindKnots = savedShowKnots === "1";
+    const el = document.getElementById("showWindKnots");
+    if (el) el.checked = showWindKnots;
+  }
+  if (savedShowDir !== null) {
+    showWindDir = savedShowDir === "1";
+    const el = document.getElementById("showWindDir");
+    if (el) el.checked = showWindDir;
+  }
+  if (savedTopOffset !== null) {
+    windTopOffset = parseInt(savedTopOffset);
+    const el = document.getElementById("windTopOffset");
+    const label = document.getElementById("windTopOffsetLabel");
+    if (el) el.value = windTopOffset;
+    if (label) label.textContent = windTopOffset + "px";
+  }
+  if (savedBotOffset !== null) {
+    windBotOffset = parseInt(savedBotOffset);
+    const el = document.getElementById("windBotOffset");
+    const label = document.getElementById("windBotOffsetLabel");
+    if (el) el.value = windBotOffset;
+    if (label) label.textContent = windBotOffset + "px";
   }
 
   if (lat && lon) {
@@ -1101,16 +1201,16 @@ async function loadMarineLocation() {
     marineLocationLon = parseFloat(lon);
     userLat = marineLocationLat;
     userLon = marineLocationLon;
-
     const input = document.getElementById("marineAddressInput");
     if (input && address) input.value = address;
     updateCompassMap();
-
     await fetchAllNoaaStations().then(stations => {
       allNoaaStations = stations;
       return updateNearbyStations(marineLocationLat, marineLocationLon);
     });
   }
+  renderCompass();
+  renderWindReadings();
 
   return Promise.resolve();
 }
@@ -1127,9 +1227,7 @@ function attachCompassSettingsEvents() {
   const addressInput = document.getElementById("marineAddressInput");
   if (addressInput) {
     addressInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && addressInput.value.trim()) {
-        geocodeMarineAddress(addressInput.value.trim());
-      }
+      if (e.key === "Enter" && addressInput.value.trim()) geocodeMarineAddress(addressInput.value.trim());
     });
   }
 
@@ -1158,9 +1256,134 @@ function attachCompassSettingsEvents() {
       compassSize = parseInt(sizeSlider.value);
       document.getElementById("compassSizeLabel").textContent = compassSize + "px";
       localStorage.setItem("compassSize", compassSize);
+      renderCompass();
       updateCompassMap();
     });
   }
+
+  const styleSelect = document.getElementById("compassStyle");
+  if (styleSelect) {
+    styleSelect.addEventListener("change", () => {
+      compassStyle = styleSelect.value;
+      localStorage.setItem("compassStyle", compassStyle);
+      renderCompass();
+    });
+  }
+
+  const cardinalSlider = document.getElementById("cardinalOffset");
+  if (cardinalSlider) {
+    cardinalSlider.addEventListener("input", () => {
+      cardinalOffset = parseInt(cardinalSlider.value);
+      document.getElementById("cardinalOffsetLabel").textContent = cardinalOffset + "px";
+      localStorage.setItem("cardinalOffset", cardinalOffset);
+      renderCompass();
+    });
+  }
+
+  const topOffsetSlider = document.getElementById("windTopOffset");
+  if (topOffsetSlider) {
+    topOffsetSlider.addEventListener("input", () => {
+      windTopOffset = parseInt(topOffsetSlider.value);
+      document.getElementById("windTopOffsetLabel").textContent = windTopOffset + "px";
+      localStorage.setItem("windTopOffset", windTopOffset);
+      renderWindReadings();
+    });
+  }
+
+  const botOffsetSlider = document.getElementById("windBotOffset");
+  if (botOffsetSlider) {
+    botOffsetSlider.addEventListener("input", () => {
+      windBotOffset = parseInt(botOffsetSlider.value);
+      document.getElementById("windBotOffsetLabel").textContent = windBotOffset + "px";
+      localStorage.setItem("windBotOffset", windBotOffset);
+      renderWindReadings();
+    });
+  }
+
+  const checks = [
+    ["showWindMph",   v => showWindMph = v,   "showWindMph"],
+    ["showWindKph",   v => showWindKph = v,   "showWindKph"],
+    ["showWindKnots", v => showWindKnots = v, "showWindKnots"],
+    ["showWindDir",   v => showWindDir = v,   "showWindDir"],
+  ];
+  checks.forEach(([id, setter, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => {
+      setter(el.checked);
+      localStorage.setItem(key, el.checked ? "1" : "0");
+      renderWindReadings();
+    });
+  });
+}
+
+function makeSettingsPanelsDraggable() {
+  document.querySelectorAll(".widgetSettingsPanel").forEach(panel => {
+    const header = panel.querySelector(".settingsHeader");
+    if (!header) return;
+
+    const btn = document.createElement("button");
+    btn.className = "settingsDragBtn";
+    btn.title = "Pop out / dock";
+    btn.textContent = "⎋";
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const detaching = !panel.classList.contains("is-detached");
+
+      if (detaching) {
+        /* move panel to body so it escapes widget stacking context */
+        const rect = panel.getBoundingClientRect();
+        document.body.appendChild(panel);
+        panel.style.position = "fixed";
+        panel.style.left = rect.left + "px";
+        panel.style.top = rect.top + "px";
+        panel.style.right = "auto";
+        panel.style.width = "260px";
+        panel.style.maxHeight = "80vh";
+        panel.style.zIndex = "99999";
+        panel.style.display = "block";
+        panel.classList.add("is-detached");
+        btn.textContent = "⊡";
+      } else {
+        /* dock it back — find its widget and re-attach */
+        const widgetId = panel.dataset.settingsFor;
+        const widget = document.querySelector(`[data-widget="${widgetId}"]`);
+        if (widget) {
+          widget.appendChild(panel);
+          panel.style.position = "";
+          panel.style.left = "";
+          panel.style.top = "";
+          panel.style.right = "";
+          panel.style.width = "";
+          panel.style.maxHeight = "";
+          panel.style.zIndex = "";
+        }
+        panel.classList.remove("is-detached");
+        btn.textContent = "⎋";
+      }
+    });
+    header.appendChild(btn);
+
+    /* drag logic */
+    let dragging = false;
+    let ox = 0, oy = 0;
+
+    header.addEventListener("mousedown", (e) => {
+      if (!panel.classList.contains("is-detached")) return;
+      if (e.target === btn) return;
+      dragging = true;
+      ox = e.clientX - panel.getBoundingClientRect().left;
+      oy = e.clientY - panel.getBoundingClientRect().top;
+      e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      panel.style.left = (e.clientX - ox) + "px";
+      panel.style.top = (e.clientY - oy) + "px";
+    });
+
+    document.addEventListener("mouseup", () => { dragging = false; });
+  });
 }
 
 async function geocodeMarineAddress(address) {
@@ -1189,48 +1412,6 @@ async function geocodeMarineAddress(address) {
   }
 }
 
-function loadMarineLocation() {
-  const lat = localStorage.getItem("marineLocationLat");
-  const lon = localStorage.getItem("marineLocationLon");
-  const address = localStorage.getItem("marineLocationAddress");
-
-  if (lat && lon) {
-    marineLocationLat = parseFloat(lat);
-    marineLocationLon = parseFloat(lon);
-    const input = document.getElementById("marineAddressInput");
-    if (input && address) input.value = address;
-    updateCompassMap();
-
-    /* use saved marina location to load correct nearby stations */
-    userLat = marineLocationLat;
-    userLon = marineLocationLon;
-
-    if (!allNoaaStations) {
-      fetchAllNoaaStations().then(stations => {
-        allNoaaStations = stations;
-
-        nearbyStations = (allNoaaStations || LOCAL_STATIONS)
-          .map(s => ({
-            ...s,
-            distance: haversineMiles(userLat, userLon, s.lat, s.lon)
-          }))
-          .filter(s => !isNaN(s.distance))
-          .sort((a, b) => a.distance - b.distance)
-          .slice(0, 5);
-
-        if (nearbyStations.length === 0) nearbyStations = [...LOCAL_STATIONS];
-
-        populateStationDropdown();
-        selectedStation = nearbyStations[0];
-
-        const select = document.getElementById("stationSelect");
-        if (select) select.value = selectedStation.id;
-
-        refreshAll();
-      });
-    }
-  }
-}
 
 function renderWeather(data) {
   const wrap = document.getElementById("forecast");
@@ -1843,40 +2024,62 @@ function shiftHue(hex, degree) {
    ========================================================================== */
 function updateCompassMap() {
   const canvas = document.getElementById("compassMapCanvas");
-  const compassEl = document.getElementById("compassWidget");
   if (!canvas || !marineLocationLat || !marineLocationLon) return;
 
-  const size = compassSize;
-
-  if (compassEl) {
-    compassEl.style.width = `${size}px`;
-    compassEl.style.height = `${size}px`;
+  if (compassMapMode === "none") {
+    canvas.style.display = "none";
+    return;
   }
+  canvas.style.display = "block";
 
   if (compassMapMode === "widget") {
+    /* move canvas to widgetFrame so it fills the whole widget */
     const widgetFrame = document.querySelector("#windWidget .widgetFrame");
-    const w2 = widgetFrame ? widgetFrame.offsetWidth : size;
-    const h2 = widgetFrame ? widgetFrame.offsetHeight : size;
-    canvas.width = w2;
-    canvas.height = h2;
-    canvas.style.width = w2 + "px";
-    canvas.style.height = h2 + "px";
+    if (!widgetFrame) return;
+
+    if (canvas.parentElement !== widgetFrame) {
+      widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
+    }
+
+    const w = widgetFrame.offsetWidth;
+    const h = widgetFrame.offsetHeight;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.position = "absolute";
     canvas.style.top = "0";
     canvas.style.left = "0";
-    canvas.style.borderRadius = "8px";
-    canvas.classList.add("fillWidget");
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    canvas.style.borderRadius = "12px";
+    canvas.style.opacity = "0.45";
+    canvas.style.zIndex = "0";
+    drawMapTiles(canvas, w, h);
+
   } else {
+    /* move canvas back inside compass */
+    const compassEl = document.getElementById("compassWidget");
+    if (!compassEl) return;
+
+    if (canvas.parentElement !== compassEl) {
+      compassEl.insertBefore(canvas, compassEl.firstChild);
+    }
+
+    const size = compassSize;
     canvas.width = size;
     canvas.height = size;
-    canvas.style.width = size + "px";
-    canvas.style.height = size + "px";
+    canvas.style.position = "absolute";
     canvas.style.top = "0";
     canvas.style.left = "0";
-    canvas.classList.remove("fillWidget");
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.borderRadius = "50%";
+    canvas.style.opacity = "0.65";
+    canvas.style.zIndex = "0";
+    drawMapTiles(canvas, size, size);
   }
+}
 
-  const w = canvas.width;
-  const h = canvas.height;
+function drawMapTiles(canvas, w, h) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, w, h);
 
@@ -1896,7 +2099,7 @@ function updateCompassMap() {
   if (compassMapMode === "compass") {
     ctx.arc(w / 2, h / 2, w / 2, 0, Math.PI * 2);
   } else {
-    ctx.roundRect(0, 0, w, h, 8);
+    ctx.roundRect(0, 0, w, h, 12);
   }
   ctx.clip();
   ctx.fillStyle = "#0a1924";
@@ -1948,102 +2151,7 @@ async function geocodeMarineAddress(address) {
   }
 }
 
-function loadMarineLocation() {
-  const lat = localStorage.getItem("marineLocationLat");
-  const lon = localStorage.getItem("marineLocationLon");
-  const address = localStorage.getItem("marineLocationAddress");
-  const savedZoom = localStorage.getItem("compassZoom");
-  const savedMode = localStorage.getItem("compassMapMode");
-  const savedSize = localStorage.getItem("compassSize");
 
-  if (savedZoom) {
-    compassZoom = parseInt(savedZoom);
-    const zSlider = document.getElementById("compassZoom");
-    const zLabel = document.getElementById("compassZoomLabel");
-    if (zSlider) zSlider.value = compassZoom;
-    if (zLabel) zLabel.textContent = compassZoom;
-  }
-
-  if (savedMode) {
-    compassMapMode = savedMode;
-    const modeSelect = document.getElementById("compassMapMode");
-    if (modeSelect) modeSelect.value = compassMapMode;
-  }
-
-  if (savedSize) {
-    compassSize = parseInt(savedSize);
-    const sSlider = document.getElementById("compassSizeSlider");
-    const sLabel = document.getElementById("compassSizeLabel");
-    if (sSlider) sSlider.value = compassSize;
-    if (sLabel) sLabel.textContent = compassSize + "px";
-  }
-
-  if (lat && lon) {
-    marineLocationLat = parseFloat(lat);
-    marineLocationLon = parseFloat(lon);
-    userLat = marineLocationLat;
-    userLon = marineLocationLon;
-
-    const input = document.getElementById("marineAddressInput");
-    if (input && address) input.value = address;
-
-    updateCompassMap();
-
-    /* load correct nearby stations from saved marina location */
-    fetchAllNoaaStations().then(stations => {
-      allNoaaStations = stations;
-      updateNearbyStations(marineLocationLat, marineLocationLon);
-    });
-  }
-}
-
-function attachCompassSettingsEvents() {
-  const marineBtn = document.getElementById("marineAddressBtn");
-  if (marineBtn) {
-    marineBtn.addEventListener("click", () => {
-      const input = document.getElementById("marineAddressInput");
-      if (input && input.value.trim()) geocodeMarineAddress(input.value.trim());
-    });
-  }
-
-  const addressInput = document.getElementById("marineAddressInput");
-  if (addressInput) {
-    addressInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && addressInput.value.trim()) {
-        geocodeMarineAddress(addressInput.value.trim());
-      }
-    });
-  }
-
-  const zoomSlider = document.getElementById("compassZoom");
-  if (zoomSlider) {
-    zoomSlider.addEventListener("input", () => {
-      compassZoom = parseInt(zoomSlider.value);
-      document.getElementById("compassZoomLabel").textContent = compassZoom;
-      localStorage.setItem("compassZoom", compassZoom);
-      updateCompassMap();
-    });
-  }
-
-  const modeSelect = document.getElementById("compassMapMode");
-  if (modeSelect) {
-    modeSelect.addEventListener("change", () => {
-      compassMapMode = modeSelect.value;
-      localStorage.setItem("compassMapMode", compassMapMode);
-      updateCompassMap();
-    });
-  }
-
-  const sizeSlider = document.getElementById("compassSizeSlider");
-  if (sizeSlider) {
-    sizeSlider.addEventListener("input", () => {
-      compassSize = parseInt(sizeSlider.value);
-      document.getElementById("compassSizeLabel").textContent = compassSize + "px";
-      localStorage.setItem("compassSize", compassSize);
-      updateCompassMap();
-    });
-  }
-}
 
 function hexToRgb(hex) {
   const v = parseInt(hex.replace("#", ""), 16);
