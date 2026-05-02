@@ -318,13 +318,15 @@ function saveLayout() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
 
+const DEFAULT_LAYOUT = {"layout":{"left":"384.808px","top":"115.985px","width":"128px","height":"40px"},"stations":{"left":"6.31489px","top":"-8.67933px","width":"536px","height":"155px"},"logo":{"left":"698.706px","top":"11.5911px","width":"120px","height":"45.1404px"},"heroText":{"left":"562.555px","top":"12.9564px","width":"120px","height":"40px"},"clock":{"left":"8.96061px","top":"220.614px","width":"351px","height":"148px"},"temp":{"left":"781.268px","top":"124.438px","width":"340px","height":"130px"},"wind":{"left":"1284.36px","top":"10.6411px","width":"614px","height":"333px"},"tideStatus":{"left":"317.877px","top":"282.466px","width":"1231.23px","height":"88px"},"forecast":{"left":"8.8933px","top":"347.661px","width":"1896.39px","height":"262.928px"},"divider":{"left":"823.756px","top":"13.4772px","width":"120px","height":"43px"},"tideChart":{"left":"2.3574px","top":"594.809px","width":"1906px","height":"348px"}};
+
+const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"stations":{"theme":"clean"},"logo":{"hidden":true},"heroText":{"hidden":true},"clock":{"theme":"clean"},"temp":{"theme":"clean"},"wind":{"theme":"clean","row2Font":"Georgia","row1Font":"Georgia"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean","row2Font":"Segoe UI"},"divider":{"hidden":true,"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0},"heroTitle":"f","heroSubtitle":"f"};
+
 function loadLayout() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
+  const layout = raw ? JSON.parse(raw) : DEFAULT_LAYOUT;
 
   try {
-    const layout = JSON.parse(raw);
-
     Object.entries(layout).forEach(([key, value]) => {
       const widget = document.querySelector(`.widget[data-widget="${key}"]`);
       if (!widget) return;
@@ -632,11 +634,9 @@ function saveAllSettings() {
 
 function loadAllSettings() {
   const raw = localStorage.getItem(SETTINGS_KEY);
-  if (!raw) return;
+  const parsed = raw ? JSON.parse(raw) : DEFAULT_SETTINGS;
 
   try {
-    const parsed = JSON.parse(raw);
-
     widgetSettings = parsed.widgetSettings || {};
     dashboardSettings = parsed.dashboardSettings || dashboardSettings;
 
@@ -644,13 +644,12 @@ function loadAllSettings() {
       const el = document.getElementById("heroTitleText");
       if (el) el.textContent = parsed.heroTitle;
     }
-
     if (parsed.heroSubtitle) {
       const el = document.getElementById("heroSubtitleText");
       if (el) el.textContent = parsed.heroSubtitle;
     }
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
   }
 }
 
