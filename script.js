@@ -11,6 +11,11 @@ const STORAGE_KEY = "marineDashboardLayoutV2";
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
+const DEFAULT_LAYOUT = {"layout":{"left":"384.808px","top":"115.985px","width":"128px","height":"40px"},"stations":{"left":"6.31489px","top":"-8.67933px","width":"536px","height":"155px"},"logo":{"left":"698.706px","top":"11.5911px","width":"120px","height":"45.1404px"},"heroText":{"left":"562.555px","top":"12.9564px","width":"120px","height":"40px"},"clock":{"left":"8.96061px","top":"220.614px","width":"351px","height":"148px"},"temp":{"left":"781.268px","top":"124.438px","width":"340px","height":"130px"},"wind":{"left":"1284.36px","top":"10.6411px","width":"614px","height":"333px"},"tideStatus":{"left":"317.877px","top":"282.466px","width":"1231.23px","height":"88px"},"forecast":{"left":"8.8933px","top":"347.661px","width":"1896.39px","height":"262.928px"},"divider":{"left":"823.756px","top":"13.4772px","width":"120px","height":"43px"},"tideChart":{"left":"2.3574px","top":"594.809px","width":"1906px","height":"348px"}};
+
+const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"stations":{"theme":"clean"},"logo":{"hidden":true},"heroText":{"hidden":true},"clock":{"theme":"clean"},"temp":{"theme":"clean"},"wind":{"theme":"clean","row2Font":"Georgia","row1Font":"Georgia"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean","row2Font":"Segoe UI"},"divider":{"hidden":true,"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0},"heroTitle":"f","heroSubtitle":"f"};
+
+
 /* location defaults */
 let userLat = 29.938;
 let userLon = -81.302;
@@ -317,10 +322,6 @@ function saveLayout() {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
-
-const DEFAULT_LAYOUT = {"layout":{"left":"384.808px","top":"115.985px","width":"128px","height":"40px"},"stations":{"left":"6.31489px","top":"-8.67933px","width":"536px","height":"155px"},"logo":{"left":"698.706px","top":"11.5911px","width":"120px","height":"45.1404px"},"heroText":{"left":"562.555px","top":"12.9564px","width":"120px","height":"40px"},"clock":{"left":"8.96061px","top":"220.614px","width":"351px","height":"148px"},"temp":{"left":"781.268px","top":"124.438px","width":"340px","height":"130px"},"wind":{"left":"1284.36px","top":"10.6411px","width":"614px","height":"333px"},"tideStatus":{"left":"317.877px","top":"282.466px","width":"1231.23px","height":"88px"},"forecast":{"left":"8.8933px","top":"347.661px","width":"1896.39px","height":"262.928px"},"divider":{"left":"823.756px","top":"13.4772px","width":"120px","height":"43px"},"tideChart":{"left":"2.3574px","top":"594.809px","width":"1906px","height":"348px"}};
-
-const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"stations":{"theme":"clean"},"logo":{"hidden":true},"heroText":{"hidden":true},"clock":{"theme":"clean"},"temp":{"theme":"clean"},"wind":{"theme":"clean","row2Font":"Georgia","row1Font":"Georgia"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean","row2Font":"Segoe UI"},"divider":{"hidden":true,"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0},"heroTitle":"f","heroSubtitle":"f"};
 
 function loadLayout() {
   const raw = localStorage.getItem(STORAGE_KEY);
