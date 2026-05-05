@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marine Dashboard</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- PWA support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Marine">
+  <link rel="apple-touch-icon" href="staugustine-sailing-logo.png">
 </head>
 <body>
   <div id="app">
@@ -453,14 +461,14 @@
         </div>
 
         <div class="widget" data-widget="wind" id="windWidget">
-          <div class="widgetFrame">     
+          <div class="widgetFrame">
             <div class="widgetControls">
               <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
 
-         <div class="windBox">
+            <div class="windBox">
               <div class="windReadings" id="windReadings"></div>
 
               <div class="compassOuter" id="compassOuter">
@@ -479,8 +487,6 @@
 
               <div class="windDir" id="windDir"></div>
             </div>
-
-                          </div>
 
             <div class="widgetSettingsPanel" data-settings-for="wind">
               <div class="settingsHeader">
@@ -520,7 +526,7 @@
                 <input type="color" class="fontColorInput" data-target="row1Color" value="#d9f2ff">
               </div>
 
-                            <div class="settingsRow">
+              <div class="settingsRow">
                 <label>Row 2 Font</label>
                 <select class="fontSelect" data-target="row2Font">
                   <option value="Segoe UI">Segoe UI</option>
@@ -536,8 +542,7 @@
                 <input type="color" class="fontColorInput" data-target="row2Color" value="#b9dcec">
               </div>
 
-              
-             <div class="settingsRow">
+              <div class="settingsRow">
                 <label>Marina Address</label>
                 <div style="display:flex;gap:6px;">
                   <input id="marineAddressInput" type="text" placeholder="Enter marina address..." style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(125,186,220,0.3);border-radius:6px;color:#eef7ff;padding:4px 7px;font-size:12px;min-width:0;" />
@@ -560,7 +565,6 @@
                 </select>
               </div>
 
-              
               <div class="settingsRow">
                 <label>Cardinal Distance</label>
                 <input type="range" id="cardinalOffset" min="0" max="60" value="20" style="width:100%;" />
@@ -607,8 +611,7 @@
                 <span id="windBotOffsetLabel" style="font-size:11px;color:#aac;">0px</span>
               </div>
 
-            
-                         </div>
+            </div>
 
             <div class="widgetResize"></div>
           </div>
@@ -876,5 +879,14 @@
   </div>
 
   <script src="script.js"></script>
+
+  <!-- Service Worker registration (after page load for best performance) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js');
+      });
+    }
+  </script>
 </body>
 </html>
