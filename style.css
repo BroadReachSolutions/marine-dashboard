@@ -1270,18 +1270,27 @@ body.layout-edit .widget.theme-clean {
     touch-action: none;
   }
 
-  /* Resize handle: visible in bottom-right corner in edit mode */
+  /* Resize handle: large touch target in bottom-right corner in edit mode */
   body.layout-edit .widgetResize {
-    display: block !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
     position: absolute !important;
-    width: 28px !important;
-    height: 28px !important;
-    right: 6px !important;
-    bottom: 6px !important;
-    background: rgba(100,180,255,0.4) !important;
-    border-radius: 6px !important;
+    width: 44px !important;
+    height: 44px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(100,180,255,0.35) !important;
+    border-radius: 12px 0 10px 0 !important;
     z-index: 50 !important;
     touch-action: none;
+  }
+
+  body.layout-edit .widgetResize::after {
+    content: "⤡";
+    font-size: 20px;
+    color: rgba(180,220,255,0.9);
+    pointer-events: none;
   }
 
   /* Settings button stays accessible in edit mode */
@@ -1300,47 +1309,64 @@ body.layout-edit .widget.theme-clean {
     top: 0;
     left: 0;
     right: 0;
-    height: 52px;
+    height: 58px;
     z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 12px;
-    background: rgba(7, 19, 28, 0.95);
-    backdrop-filter: blur(8px);
+    padding: 0 14px;
+    background: rgba(7, 19, 28, 0.96);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(125, 186, 220, 0.18);
     box-sizing: border-box;
+    gap: 12px;
   }
 
+  /* Left side: temp + humidity side by side, both vertically centered */
   #mobileHeaderTemp {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
   }
 
   #mobileHeaderTempVal {
-    font-size: 28px;
+    font-size: 36px;
     font-weight: 700;
     color: #f5fbff;
     line-height: 1;
+    display: flex;
+    align-items: center;
   }
 
-  #mobileHeaderHumVal {
-    font-size: 14px;
-    color: #9fc2d9;
+  /* Humidity: % on top line, "Humidity" below */
+  #mobileHeaderHumWrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    height: 100%;
   }
 
-  #mobileHeaderTitle {
-    font-size: 13px;
+  #mobileHeaderHumPct {
+    font-size: 16px;
     font-weight: 600;
-    color: rgba(125, 186, 220, 0.7);
-    letter-spacing: 0.05em;
+    color: #9fc2d9;
+    line-height: 1;
+  }
+
+  #mobileHeaderHumLabel {
+    font-size: 11px;
+    color: rgba(125, 186, 220, 0.6);
     text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
   }
 
   /* Push dashboard content below the fixed header */
   #dashboard {
-    padding-top: 60px !important;
+    padding-top: 66px !important;
   }
 
   /* Hide the layoutWidget itself — button is in the header */
@@ -1352,7 +1378,28 @@ body.layout-edit .widget.theme-clean {
   #windWidget      { order: 1; height: 320px !important; }
   #forecastWidget  { order: 2; height: 220px !important; }
   #tideStatusWidget{ order: 3; height: 80px !important; }
-  #tideChartWidget { order: 4; height: 260px !important; padding: 0 !important; }
+  #tideChartWidget {
+    order: 4;
+    height: 220px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+
+  #tideChartWidget .tideSection,
+  #tideChartWidget .tidePanel {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  #tideChartWidget #tideChart {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
   #stationsWidget  { order: 5; }
   #layoutWidget    { order: 6; }
 
@@ -1438,27 +1485,9 @@ body.layout-edit .widget.theme-clean {
     display: none !important;
   }
 
-  /* Inline temp/humidity inside wind widget on mobile */
-  .windInlineTemp {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .windInlineTempVal {
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--row1-color, #f5fbff);
-    font-family: var(--row1-font, "Segoe UI");
-    line-height: 1;
-  }
-
-  .windInlineHumVal {
-    font-size: 15px;
-    color: var(--row2-color, #9fc2d9);
-    font-family: var(--row2-font, "Segoe UI");
+  /* windInlineTemp hidden on mobile — temp is in the header instead */
+  #windInlineTemp {
+    display: none !important;
   }
 
   /* Temperature widget */
@@ -1481,16 +1510,39 @@ body.layout-edit .widget.theme-clean {
 
   .windReadingLine { font-size: 20px; }
 
-  /* Settings panels — full width on mobile */
+  /* Settings panels — draggable floating card on mobile */
   .widgetSettingsPanel {
-    width: calc(100vw - 24px);
-    right: 0;
-    left: 0;
-    margin: 0 auto;
-    max-height: 70vh;
+    width: calc(100vw - 32px);
+    max-height: 65vh;
     position: fixed;
-    top: 60px;
+    top: 68px;
+    left: 16px;
+    right: 16px;
+    margin: 0;
     z-index: 99998;
+    touch-action: none;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+  }
+
+  /* Show a drag grip at the top of the settings panel */
+  .settingsHeader::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: rgba(125,186,220,0.35);
+    border-radius: 2px;
+  }
+
+  .settingsHeader {
+    position: relative;
+    padding-top: 16px;
+    cursor: grab;
+    touch-action: none;
   }
 }
 

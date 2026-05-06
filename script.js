@@ -164,10 +164,12 @@ function applyMobileWidgetOverrides() {
     header.innerHTML = `
       <div id="mobileHeaderTemp">
         <span id="mobileHeaderTempVal">--°</span>
-        <span id="mobileHeaderHumVal">--%</span>
+        <div id="mobileHeaderHumWrap">
+          <span id="mobileHeaderHumPct">--%</span>
+          <span id="mobileHeaderHumLabel">Humidity</span>
+        </div>
       </div>
-      <div id="mobileHeaderTitle">Marine Dashboard</div>
-      <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 12px;height:34px;">Edit Layout</button>
+      <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 14px;height:36px;">Edit Layout</button>
     `;
     document.body.prepend(header);
 
@@ -180,6 +182,7 @@ function applyMobileWidgetOverrides() {
   }
 
   loadMobileOrder();
+  loadMobileSizes();
 }
 
 function removeMobileWidgetOverrides() {
@@ -402,6 +405,31 @@ function saveMobileOrder() {
   localStorage.setItem("marineMobileOrder", JSON.stringify(order));
 }
 
+function saveMobileSize(widget) {
+  if (!widget.dataset.widget) return;
+  const sizes = JSON.parse(localStorage.getItem("marineMobileSizes") || "{}");
+  sizes[widget.dataset.widget] = {
+    h: widget.style.height || ""
+  };
+  localStorage.setItem("marineMobileSizes", JSON.stringify(sizes));
+}
+
+function loadMobileSizes() {
+  const raw = localStorage.getItem("marineMobileSizes");
+  if (!raw) return;
+  try {
+    const sizes = JSON.parse(raw);
+    Object.entries(sizes).forEach(([key, val]) => {
+      const el = document.querySelector(`.widget[data-widget="${key}"]`);
+      if (el && val.h) {
+        el.style.setProperty("height",     val.h, "important");
+        el.style.setProperty("min-height", val.h, "important");
+        el.style.setProperty("max-height", "none","important");
+      }
+    });
+  } catch (e) {}
+}
+
 function loadMobileOrder() {
   const raw = localStorage.getItem("marineMobileOrder");
   if (!raw) return;
@@ -453,14 +481,20 @@ function makeWidgetInteractive(widget) {
     const { x, y } = getClientXY(e);
     const dx = (x - resizeStart.startX) / resizeStart.scale;
     const dy = (y - resizeStart.startY) / resizeStart.scale;
-    widget.style.width  = `${Math.max(120, resizeStart.width  + dx)}px`;
-    widget.style.height = `${Math.max(40,  resizeStart.height + dy)}px`;
+    const newW = Math.max(120, resizeStart.width  + dx);
+    const newH = Math.max(60,  resizeStart.height + dy);
+    /* Use !important via setProperty to override CSS media query heights */
+    widget.style.setProperty("width",     `${newW}px`, "important");
+    widget.style.setProperty("height",    `${newH}px`, "important");
+    widget.style.setProperty("min-height",`${newH}px`, "important");
+    widget.style.setProperty("max-height","none",       "important");
     if (widget.dataset.widget === "tideChart" && tidePredictions.length) drawTide(tidePredictions);
   }
 
   function onResizeEnd() {
     resizeStart = null;
-    saveLayout();
+    if (isMobile()) saveMobileSize(widget);
+    else saveLayout();
     if (widget.dataset.widget === "tideChart" && tidePredictions.length) drawTide(tidePredictions);
     window.removeEventListener("mousemove", onResizeMove);
     window.removeEventListener("mouseup",   onResizeEnd);
@@ -570,7 +604,47 @@ function setupWidgetSettingsSystem() {
         const isOpen = widget.classList.contains("show-settings");
         closeAllSettingsPanels();
 
-        if (!isOpen) widget.classList.add("show-settings");
+        if (!isOpen) {
+          widget.classList.add("show-settings");
+
+          /* On mobile: make the settings panel draggable by its header */
+          if (isMobile() && settingsPanel) {
+            /* Reset position each time it opens */
+            settingsPanel.style.left       = "16px";
+            settingsPanel.style.top        = "68px";
+            settingsPanel.style.right      = "16px";
+            settingsPanel.style.transition = "";
+
+            const pHeader = settingsPanel.querySelector(".settingsHeader");
+            if (pHeader && !pHeader._panelDragAttached) {
+              pHeader._panelDragAttached = true;
+              let pdStart = null, pdLeft = 16, pdTop = 68;
+
+              pHeader.addEventListener("touchstart", (ev) => {
+                if (ev.target.closest(".closeSettingsBtn")) return;
+                ev.stopPropagation();
+                const r = settingsPanel.getBoundingClientRect();
+                pdLeft = r.left; pdTop = r.top;
+                pdStart = { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+                settingsPanel.style.transition = "none";
+              }, { passive: true });
+
+              pHeader.addEventListener("touchmove", (ev) => {
+                if (!pdStart) return;
+                ev.stopPropagation();
+                const dx = ev.touches[0].clientX - pdStart.x;
+                const dy = ev.touches[0].clientY - pdStart.y;
+                const nLeft = Math.max(0, Math.min(window.innerWidth  - settingsPanel.offsetWidth,  pdLeft + dx));
+                const nTop  = Math.max(0, Math.min(window.innerHeight - 100, pdTop  + dy));
+                settingsPanel.style.left  = `${nLeft}px`;
+                settingsPanel.style.top   = `${nTop}px`;
+                settingsPanel.style.right = "auto";
+              }, { passive: false });
+
+              pHeader.addEventListener("touchend", () => { pdStart = null; });
+            }
+          }
+        }
       });
     }
 
@@ -1205,10 +1279,10 @@ function renderCurrentConditions(data) {
   if (tempSub) tempSub.textContent = `${humidity}% Humidity`;
 
   /* Update mobile header */
-  const headerTemp = document.getElementById("mobileHeaderTempVal");
-  const headerHum  = document.getElementById("mobileHeaderHumVal");
-  if (headerTemp) headerTemp.textContent = `${temp}°`;
-  if (headerHum)  headerHum.textContent  = `${humidity}% Humidity`;
+  const headerTemp   = document.getElementById("mobileHeaderTempVal");
+  const headerHumPct = document.getElementById("mobileHeaderHumPct");
+  if (headerTemp)   headerTemp.textContent   = `${temp}°`;
+  if (headerHumPct) headerHumPct.textContent = `${humidity}%`;
 
   renderWindReadings();
   renderCompass();
@@ -1241,29 +1315,7 @@ function renderWindReadings() {
     botEl.style.transform = `translateY(${windBotOffset}px)`;
   }
 
-  /* On mobile: inject temp + humidity directly into wind widget */
-  if (isMobile()) {
-    const tempMain = document.getElementById("tempMain");
-    const tempSub  = document.getElementById("tempSub");
-    let inlineTemp = document.getElementById("windInlineTemp");
-
-    if (!inlineTemp) {
-      inlineTemp = document.createElement("div");
-      inlineTemp.id = "windInlineTemp";
-      inlineTemp.className = "windInlineTemp";
-      const windBox = document.querySelector("#windWidget .windBox");
-      if (windBox) windBox.appendChild(inlineTemp);
-    }
-
-    const tempText = tempMain ? tempMain.textContent : "";
-    const humText  = tempSub  ? tempSub.textContent  : "";
-    if (tempText) {
-      inlineTemp.innerHTML = `
-        <span class="windInlineTempVal">${tempText}</span>
-        <span class="windInlineHumVal">${humText}</span>
-      `;
-    }
-  }
+  /* Temp/humidity is now shown in the mobile header — nothing to inject here */
 }
 
 function renderCompass() {
@@ -1727,15 +1779,18 @@ function renderWeather(data) {
   if (weatherViewMode === "weekly") {
     const visibleDays = isMobile() ? WEEKLY_VISIBLE_DAYS : 7;
     const totalDays   = d.daily.time.length;
+    /* Always start from today — find index where date >= today */
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayIdx = Math.max(0, d.daily.time.findIndex(t => t >= todayStr));
 
     if (isMobile()) {
-      weeklyDragOffset = Math.max(0, Math.min(weeklyDragOffset, totalDays - visibleDays));
+      weeklyDragOffset = Math.max(0, Math.min(weeklyDragOffset, totalDays - todayIdx - visibleDays));
     } else {
       weeklyDragOffset = 0;
     }
 
     for (let n = 0; n < visibleDays; n++) {
-      const i = weeklyDragOffset + n;
+      const i = todayIdx + weeklyDragOffset + n;
       if (i >= totalDays) break;
       const card = document.createElement("div");
       card.className = "card weekly";
@@ -2299,10 +2354,11 @@ function ensureTideReadout() {
 }
 
 function getTideChartMetrics(canvas) {
-  const leftPad   = 36;
-  const rightPad  = 20;
-  const topPad    = 28;
-  const bottomPad = 34;
+  /* On mobile use tighter padding so the chart fills edge-to-edge */
+  const leftPad   = isMobile() ? 4  : 36;
+  const rightPad  = isMobile() ? 4  : 20;
+  const topPad    = isMobile() ? 32 : 28; /* room for pill label */
+  const bottomPad = isMobile() ? 22 : 34;
   const chartW = canvas.width - leftPad - rightPad;
   const chartH = canvas.height - topPad - bottomPad;
 
