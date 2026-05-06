@@ -1197,6 +1197,13 @@ body.layout-edit .widget.theme-clean {
   body {
     overflow-y: auto;
     overflow-x: hidden;
+    /* Solid background so there's no gradient seam when scrolling */
+    background: var(--dashboard-bg-1) !important;
+    min-height: 100vh;
+  }
+
+  html {
+    background: var(--dashboard-bg-1);
   }
 
   #app,
@@ -1220,9 +1227,14 @@ body.layout-edit .widget.theme-clean {
     box-sizing: border-box;
   }
 
-  /* Edit mode: keep normal flow, just add some bottom padding */
+  /* Edit mode: extra bottom room for resizing */
   body.layout-edit #dashboard {
-    padding-bottom: 80px;
+    padding-bottom: 120px !important;
+  }
+
+  /* Resized widgets can grow freely without pushing siblings */
+  body.layout-edit .widget {
+    flex-shrink: 0;
   }
 
   /* All widgets: stack vertically, full width */
@@ -1245,10 +1257,36 @@ body.layout-edit .widget.theme-clean {
     outline-offset: 2px;
   }
 
-  /* In mobile edit mode, disable touch-action on handles so drag works */
-  body.layout-edit .widgetHandle {
+  /* Hide the handle bar on mobile — not needed since whole widget is draggable in edit */
+  .widgetHandle {
+    display: none !important;
+  }
+
+  /* In edit mode show a subtle drag indicator on the whole widget */
+  body.layout-edit .widget {
+    position: relative !important;
+    outline: 2px dashed rgba(140,200,230,0.5) !important;
+    outline-offset: 2px;
     touch-action: none;
-    cursor: grab;
+  }
+
+  /* Resize handle: visible in bottom-right corner in edit mode */
+  body.layout-edit .widgetResize {
+    display: block !important;
+    position: absolute !important;
+    width: 28px !important;
+    height: 28px !important;
+    right: 6px !important;
+    bottom: 6px !important;
+    background: rgba(100,180,255,0.4) !important;
+    border-radius: 6px !important;
+    z-index: 50 !important;
+    touch-action: none;
+  }
+
+  /* Settings button stays accessible in edit mode */
+  body.layout-edit .widgetControls {
+    z-index: 60 !important;
   }
 
   .widgetFrame {
@@ -1256,21 +1294,65 @@ body.layout-edit .widget.theme-clean {
     border-radius: 14px;
   }
 
-  /* Layout/Edit button — float it in the top-right corner */
+  /* Header bar — fixed at top, holds edit button and temp/humidity */
+  #mobileHeader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: rgba(7, 19, 28, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(125, 186, 220, 0.18);
+    box-sizing: border-box;
+  }
+
+  #mobileHeaderTemp {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  #mobileHeaderTempVal {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f5fbff;
+    line-height: 1;
+  }
+
+  #mobileHeaderHumVal {
+    font-size: 14px;
+    color: #9fc2d9;
+  }
+
+  #mobileHeaderTitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(125, 186, 220, 0.7);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* Push dashboard content below the fixed header */
+  #dashboard {
+    padding-top: 60px !important;
+  }
+
+  /* Hide the layoutWidget itself — button is in the header */
   #layoutWidget {
-    position: fixed !important;
-    top: 10px;
-    right: 10px;
-    width: 130px !important;
-    height: 42px !important;
-    z-index: 99999 !important;
+    display: none !important;
   }
 
   /* New order: wind/compass → forecast → tide → stations */
   #windWidget      { order: 1; height: 320px !important; }
   #forecastWidget  { order: 2; height: 220px !important; }
   #tideStatusWidget{ order: 3; height: 80px !important; }
-  #tideChartWidget { order: 4; height: 260px !important; }
+  #tideChartWidget { order: 4; height: 260px !important; padding: 0 !important; }
   #stationsWidget  { order: 5; }
   #layoutWidget    { order: 6; }
 
@@ -1334,7 +1416,8 @@ body.layout-edit .widget.theme-clean {
 
   /* Tide chart: taller canvas, touch-draggable */
   .tideSection {
-    padding: 8px 0 0 0;
+    padding: 0;
+    margin: 0 -2px;
   }
 
   .tidePanel {

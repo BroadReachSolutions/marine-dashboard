@@ -156,6 +156,29 @@ function applyMobileWidgetOverrides() {
     const el = document.getElementById(id);
     if (el) el.classList.add("mobile-hidden");
   });
+
+  /* Create fixed header bar if not already present */
+  if (!document.getElementById("mobileHeader")) {
+    const header = document.createElement("div");
+    header.id = "mobileHeader";
+    header.innerHTML = `
+      <div id="mobileHeaderTemp">
+        <span id="mobileHeaderTempVal">--°</span>
+        <span id="mobileHeaderHumVal">--%</span>
+      </div>
+      <div id="mobileHeaderTitle">Marine Dashboard</div>
+      <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 12px;height:34px;">Edit Layout</button>
+    `;
+    document.body.prepend(header);
+
+    /* Wire the header edit button to the same layoutToggle logic */
+    const mobileEditBtn = document.getElementById("mobileEditBtn");
+    const desktopToggle = document.getElementById("layoutToggle");
+    if (mobileEditBtn && desktopToggle) {
+      mobileEditBtn.addEventListener("click", () => desktopToggle.click());
+    }
+  }
+
   loadMobileOrder();
 }
 
@@ -251,6 +274,13 @@ function setupLayoutEditor() {
 
     applyAllWidgetSettings();
 
+    /* sync mobile header edit button label */
+    const mobileEditBtn = document.getElementById("mobileEditBtn");
+    if (mobileEditBtn) {
+      mobileEditBtn.textContent = layoutEditMode ? "Done" : "Edit Layout";
+      mobileEditBtn.classList.toggle("active", layoutEditMode);
+    }
+
     if (isMobile()) {
       if (layoutEditMode) {
         setupMobileReorder();
@@ -282,69 +312,74 @@ function setupMobileReorder() {
   if (!dashboard) return;
 
   const widgets = [...dashboard.querySelectorAll(".widget:not(#layoutWidget)")];
-  let dragEl    = null;
-  let dragGhost = null;
-  let startY    = 0;
+  let dragEl     = null;
+  let startY     = 0;
   let startOrder = 0;
+  let isDragging = false;
+  const DRAG_PX  = 12; /* px of movement before commit to drag */
 
   function getOrder(el) {
     return parseInt(el.style.order || getComputedStyle(el).order || "0") || 0;
   }
 
-  function onHandleTouchStart(e) {
+  function onWidgetTouchStart(e) {
     if (!layoutEditMode) return;
-    const widget = e.currentTarget.closest(".widget");
-    if (!widget) return;
-    e.preventDefault();
+    /* allow settings button and resize handle to still work */
+    if (e.target.closest(".widgetSettingsBtn")) return;
+    if (e.target.closest(".widgetHideBtn")) return;
+    if (e.target.closest(".widgetResize")) return;
+    if (e.target.closest(".widgetSettingsPanel")) return;
 
-    dragEl     = widget;
+    dragEl     = e.currentTarget;
     startY     = e.touches[0].clientY;
-    startOrder = getOrder(widget);
-
-    dragEl.classList.add("mobile-dragging");
+    startOrder = getOrder(dragEl);
+    isDragging = false;
   }
 
-  function onHandleTouchMove(e) {
+  function onWidgetTouchMove(e) {
     if (!dragEl) return;
-    const dy     = e.touches[0].clientY - startY;
-    const itemH  = dragEl.offsetHeight + 10; /* approximate widget height + gap */
-    const shift  = Math.round(dy / itemH);
+    const dy = e.touches[0].clientY - startY;
+
+    if (!isDragging && Math.abs(dy) > DRAG_PX) {
+      isDragging = true;
+      dragEl.classList.add("mobile-dragging");
+    }
+
+    if (!isDragging) return;
+    e.preventDefault();
+
+    const itemH    = dragEl.offsetHeight + 10;
+    const shift    = Math.round(dy / itemH);
     const newOrder = Math.max(1, Math.min(widgets.length, startOrder + shift));
 
-    /* swap orders with whoever is currently at newOrder */
     widgets.forEach(w => {
       if (w === dragEl) {
         w.style.order = newOrder;
       } else {
         const wo = getOrder(w);
-        if (wo === newOrder) {
-          w.style.order = startOrder;
-        }
+        if (wo === newOrder) w.style.order = startOrder;
       }
     });
   }
 
-  function onHandleTouchEnd() {
+  function onWidgetTouchEnd() {
     if (dragEl) dragEl.classList.remove("mobile-dragging");
-    dragEl = null;
+    dragEl     = null;
+    isDragging = false;
   }
 
-  /* attach to each widget handle */
+  /* attach to whole widget frame */
   widgets.forEach(w => {
-    const handle = w.querySelector(".widgetHandle");
-    if (!handle) return;
-    handle.addEventListener("touchstart", onHandleTouchStart, { passive: false });
-    handle.addEventListener("touchmove",  onHandleTouchMove,  { passive: true });
-    handle.addEventListener("touchend",   onHandleTouchEnd);
+    w.addEventListener("touchstart", onWidgetTouchStart, { passive: true });
+    w.addEventListener("touchmove",  onWidgetTouchMove,  { passive: false });
+    w.addEventListener("touchend",   onWidgetTouchEnd);
   });
 
   mobileReorderCleanup = () => {
     widgets.forEach(w => {
-      const handle = w.querySelector(".widgetHandle");
-      if (!handle) return;
-      handle.removeEventListener("touchstart", onHandleTouchStart);
-      handle.removeEventListener("touchmove",  onHandleTouchMove);
-      handle.removeEventListener("touchend",   onHandleTouchEnd);
+      w.removeEventListener("touchstart", onWidgetTouchStart);
+      w.removeEventListener("touchmove",  onWidgetTouchMove);
+      w.removeEventListener("touchend",   onWidgetTouchEnd);
       w.classList.remove("mobile-dragging");
     });
   };
@@ -1168,6 +1203,12 @@ function renderCurrentConditions(data) {
   const tempSub = document.getElementById("tempSub");
   if (tempMain) tempMain.textContent = `${temp}°`;
   if (tempSub) tempSub.textContent = `${humidity}% Humidity`;
+
+  /* Update mobile header */
+  const headerTemp = document.getElementById("mobileHeaderTempVal");
+  const headerHum  = document.getElementById("mobileHeaderHumVal");
+  if (headerTemp) headerTemp.textContent = `${temp}°`;
+  if (headerHum)  headerHum.textContent  = `${humidity}% Humidity`;
 
   renderWindReadings();
   renderCompass();
