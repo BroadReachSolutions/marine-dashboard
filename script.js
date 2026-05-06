@@ -1570,9 +1570,12 @@ function renderWeather(data) {
 
   /* --- Hourly --- */
   const visibleHours = getForecastVisibleHours();
-  const currentHour  = new Date().getHours();
-  let startIndex = d.hourly.time.findIndex(t => new Date(t).getHours() === currentHour);
+  const now = new Date();
+  /* find the first hourly slot that is >= current time (not just hour match) */
+  let startIndex = d.hourly.time.findIndex(t => new Date(t) >= now);
   if (startIndex < 0) startIndex = 0;
+  /* step back one so current hour is included */
+  if (startIndex > 0) startIndex = Math.max(0, startIndex - 1);
 
   if (isMobile()) {
     const maxOffset = Math.max(0, WEATHER_HOURS - visibleHours);
@@ -1713,311 +1716,272 @@ function updateTideStatus() {
 }
 
 function drawTide(series) {
-  const c = document.getElementById("tideChart");
-  const line = document.getElementById("tideLine");
-  const currentTideEl = document.getElementById("currentTide");
-  const lowTideAlertEl = document.getElementById("lowTideAlert");
-  const readoutEl = ensureTideReadout();
+  const c            = document.getElementById("tideChart");
+  const htmlLine     = document.getElementById("tideLine");
+  const currentTideEl   = document.getElementById("currentTide");
+  const lowTideAlertEl  = document.getElementById("lowTideAlert");
 
   if (!c || !series.length) return;
 
   const ctx = c.getContext("2d");
-  c.width = c.offsetWidth;
+  c.width  = c.offsetWidth;
   c.height = c.offsetHeight;
   ctx.clearRect(0, 0, c.width, c.height);
 
   const metrics = getTideChartMetrics(c);
-  const {
-    startMs,
-    endMs,
-    leftPad,
-    rightPad,
-    topPad,
-    bottomPad,
-    chartW,
-    chartH
-  } = metrics;
+  const { startMs, endMs, leftPad, rightPad, topPad, bottomPad, chartW, chartH } = metrics;
 
-  const defaultLineTimeMs = getDefaultTideLineTime();
-  const activeLineTimeMs = tideScrubTimeMs ?? defaultLineTimeMs;
+  /* The "now" line always tracks real current time */
+  const nowMs      = getDefaultTideLineTime();
+  const nowValue   = getTideAtTime(series, nowMs);
 
-  const defaultTideValue = getTideAtTime(series, defaultLineTimeMs);
-  const activeTideValue = getTideAtTime(series, activeLineTimeMs);
+  /* Pre-compute value range across ALL series data (not just visible)
+     so the y-scale stays stable while dragging */
+  const allValues  = series.map(d => d.value);
+  const rawMin     = Math.min(...allValues);
+  const rawMax     = Math.max(...allValues);
+  const rawRange   = Math.max(0.1, rawMax - rawMin);
+  const paddedMin  = rawMin - rawRange * 0.12;
+  const paddedMax  = rawMax + rawRange * 0.12;
+  const range      = Math.max(0.1, paddedMax - paddedMin);
 
-  const values = [...series.map(d => d.value)];
-  if (defaultTideValue != null) values.push(defaultTideValue);
-  if (activeTideValue != null) values.push(activeTideValue);
+  const xForTime = (ms) => leftPad + clamp((ms - startMs) / (endMs - startMs), 0, 1) * chartW;
+  const yForVal  = (v)  => topPad + chartH - ((v - paddedMin) / range) * chartH;
 
-  const rawMin = Math.min(...values);
-  const rawMax = Math.max(...values);
-  const rawRange = Math.max(0.1, rawMax - rawMin);
+  /* ── CLIP everything to chart area ───────────────────────────────── */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(leftPad, 0, chartW, c.height);
+  ctx.clip();
 
-  const paddedMin = rawMin - rawRange * 0.12;
-  const paddedMax = rawMax + rawRange * 0.12;
-  const range = Math.max(0.1, paddedMax - paddedMin);
-
-  const xForTime = (timeMs) => {
-    const pct = (timeMs - startMs) / (endMs - startMs);
-    return leftPad + clamp(pct, 0, 1) * chartW;
-  };
-
-  const yForValue = (v) => {
-    return topPad + chartH - ((v - paddedMin) / range) * chartH;
-  };
-
-  const activeX = xForTime(activeLineTimeMs);
-  const activeY = activeTideValue != null ? yForValue(activeTideValue) : topPad + chartH / 2;
-
-  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  /* Grid lines */
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = topPad + (i / 4) * chartH;
     ctx.beginPath();
     ctx.moveTo(leftPad, y);
-    ctx.lineTo(c.width - rightPad, y);
+    ctx.lineTo(leftPad + chartW, y);
     ctx.stroke();
   }
 
+  /* Tide curve — draw full series, clipping handles edges */
   ctx.beginPath();
-  series.forEach((point, i) => {
-    const x = xForTime(point.timeMs);
-    const y = yForValue(point.value);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  series.forEach((pt, i) => {
+    const x = xForTime(pt.timeMs);
+    const y = yForVal(pt.value);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.strokeStyle = "#7be8ff";
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.font = "14px Arial";
-  ctx.textAlign = "left";
+  /* Hour tick labels and ft values — only for points in visible window */
   let lastLabeledHour = null;
+  ctx.font = "13px Arial";
 
-  /* clip labels so they only appear within the visible chart area */
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(leftPad, topPad, chartW, chartH + bottomPad);
-  ctx.clip();
+  for (const pt of series) {
+    if (pt.timeMs < startMs || pt.timeMs > endMs) continue;
+    const dt  = new Date(pt.timeMs);
+    const key = `${dt.getMonth()}-${dt.getDate()}-${dt.getHours()}`;
+    if (dt.getMinutes() !== 0 || key === lastLabeledHour) continue;
+    lastLabeledHour = key;
 
-  for (const point of series) {
-    /* skip points outside the visible window */
-    if (point.timeMs < startMs || point.timeMs > endMs) continue;
+    const x = xForTime(pt.timeMs);
+    const y = yForVal(pt.value);
 
-    const dt = new Date(point.timeMs);
-    const hourKey = `${dt.getMonth()}-${dt.getDate()}-${dt.getHours()}`;
+    /* time label at bottom */
+    ctx.fillStyle   = "rgba(255,255,255,0.80)";
+    ctx.textAlign   = "center";
+    ctx.fillText(
+      dt.toLocaleTimeString([], { hour: "numeric", hour12: true }),
+      x, c.height - 6
+    );
 
-    if (dt.getMinutes() === 0 && hourKey !== lastLabeledHour) {
-      lastLabeledHour = hourKey;
-      const x = xForTime(point.timeMs);
-      const y = yForValue(point.value);
-
-      /* keep label from overflowing left or right edge */
-      const labelX = clamp(x - 18, leftPad, c.width - rightPad - 38);
-
-      ctx.fillStyle = "white";
-      ctx.fillText(
-        dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true }),
-        labelX,
-        c.height - 16
-      );
-
-      ctx.fillStyle = "#bfefff";
-      ctx.fillText(`${point.value.toFixed(1)}ft`, labelX, y - 10);
-    }
+    /* ft value near the curve */
+    ctx.fillStyle = "#9ee8ff";
+    ctx.fillText(`${pt.value.toFixed(1)}ft`, x, y - 10);
   }
-  ctx.restore();
 
-  /* dedupe slack points so only one label shows per cycle */
+  /* Slack point labels (High / Low) — clipped, centered */
   const rawSlackPoints = findSlackPoints(series);
-  const slackPoints = [];
-  const minTimeGapMs = 90 * 60 * 1000; // 90 minutes
-
-  for (const point of rawSlackPoints) {
+  const slackPoints    = [];
+  const minGapMs       = 90 * 60 * 1000;
+  for (const pt of rawSlackPoints) {
     const prev = slackPoints[slackPoints.length - 1];
-
-    if (
-      !prev ||
-      prev.kind !== point.kind ||
-      Math.abs(point.timeMs - prev.timeMs) > minTimeGapMs
-    ) {
-      slackPoints.push(point);
+    if (!prev || prev.kind !== pt.kind || Math.abs(pt.timeMs - prev.timeMs) > minGapMs) {
+      slackPoints.push(pt);
     } else {
-      if (point.kind === "high" && point.value > prev.value) {
-        slackPoints[slackPoints.length - 1] = point;
-      }
-      if (point.kind === "low" && point.value < prev.value) {
-        slackPoints[slackPoints.length - 1] = point;
-      }
+      if (pt.kind === "high" && pt.value > prev.value) slackPoints[slackPoints.length - 1] = pt;
+      if (pt.kind === "low"  && pt.value < prev.value) slackPoints[slackPoints.length - 1] = pt;
     }
   }
 
   ctx.textAlign = "center";
+  slackPoints.forEach(pt => {
+    if (pt.timeMs < startMs || pt.timeMs > endMs) return;
+    const x = xForTime(pt.timeMs);
+    const y = yForVal(pt.value);
 
-  slackPoints.forEach(point => {
-    const x = xForTime(point.timeMs);
-    const y = yForValue(point.value);
-
-    ctx.strokeStyle = "#ff6a6a";
-    ctx.lineWidth = 2;
+    /* tick mark */
+    ctx.strokeStyle = "#ff8a8a";
+    ctx.lineWidth   = 2;
     ctx.beginPath();
-    ctx.moveTo(x - 12, y);
-    ctx.lineTo(x + 12, y);
+    ctx.moveTo(x - 10, y);
+    ctx.lineTo(x + 10, y);
     ctx.stroke();
 
+    /* label */
     ctx.fillStyle = "#ff9a9a";
-    ctx.font = "bold 13px Arial";
-    ctx.fillText(
-      point.kind === "high" ? "High Slack" : "Low Slack",
-      x,
-      y - 24
-    );
+    ctx.font      = "bold 12px Arial";
+    ctx.fillText(pt.kind === "high" ? "High" : "Low", x, y - 18);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "12px Arial";
+    ctx.font      = "11px Arial";
     ctx.fillText(
-      new Date(point.timeMs).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true
-      }),
-      x,
-      y + 18
+      new Date(pt.timeMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true }),
+      x, y + 14
     );
   });
 
-  if (activeTideValue != null) {
+  ctx.restore(); /* end clip region */
+
+  /* ── NOW LINE — always drawn, always visible ─────────────────────── */
+  const nowX = xForTime(nowMs);
+  /* only draw if current time is within visible window */
+  const nowInView = nowMs >= startMs && nowMs <= endMs;
+
+  if (nowInView && nowValue != null) {
+    const nowY = yForVal(nowValue);
+
+    /* vertical red line */
+    ctx.save();
+    ctx.strokeStyle = "#ff6f61";
+    ctx.lineWidth   = 2;
+    ctx.shadowColor = "rgba(255,111,97,0.5)";
+    ctx.shadowBlur  = 6;
     ctx.beginPath();
-    ctx.arc(activeX, activeY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = tideDragging ? "#ffd166" : "#ff6f61";
+    ctx.moveTo(nowX, topPad);
+    ctx.lineTo(nowX, topPad + chartH);
+    ctx.stroke();
+    ctx.restore();
+
+    /* dot on the curve */
+    ctx.beginPath();
+    ctx.arc(nowX, nowY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ff6f61";
     ctx.fill();
+
+    /* readout pill above the line */
+    const label    = formatTideReadout(nowMs, nowValue);
+    ctx.font       = "bold 13px Arial";
+    const tw       = ctx.measureText(label).width;
+    const pillW    = tw + 16;
+    const pillH    = 22;
+    const pillX    = clamp(nowX - pillW / 2, leftPad + 2, leftPad + chartW - pillW - 2);
+    const pillY    = topPad + 4;
+
+    ctx.fillStyle  = "rgba(20,40,55,0.92)";
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillW, pillH, 6);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,111,97,0.7)";
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+
+    ctx.fillStyle  = "#ff9a8a";
+    ctx.textAlign  = "center";
+    ctx.fillText(label, pillX + pillW / 2, pillY + 15);
   }
 
-  if (line) {
-    line.style.display = "block";
-    line.style.left = `${activeX}px`;
-  }
+  /* Hide the HTML line element — we draw on canvas */
+  if (htmlLine) htmlLine.style.display = "none";
 
-  if (readoutEl) {
-    if (tideDragging && activeTideValue != null) {
-      readoutEl.style.display = "block";
-      readoutEl.style.left = `${activeX}px`;
-      readoutEl.textContent = formatTideReadout(activeLineTimeMs, activeTideValue);
+  /* Hide old readout div */
+  const readoutEl = document.getElementById("tideReadout");
+  if (readoutEl) readoutEl.style.display = "none";
+
+  /* ── Update status text ───────────────────────────────────────────── */
+  if (nowValue != null) {
+    if (tideViewMode === "live") {
+      currentTideEl.innerText =
+        `Tide now at ${selectedStation.name}: ${nowValue > 0 ? "+" : ""}${nowValue.toFixed(2)} ft`;
     } else {
-      readoutEl.style.display = "none";
+      currentTideEl.innerText =
+        `Tide for ${selectedTideDate} at ${selectedStation.name}: ${formatTideReadout(nowMs, nowValue)}`;
     }
-  }
-
-  if (activeTideValue != null) {
-    if (tideDragging) {
-      currentTideEl.innerText =
-        `Selected tide at ${selectedStation.name}: ${formatTideReadout(activeLineTimeMs, activeTideValue)}`;
-    } else if (tideViewMode === "live") {
-      currentTideEl.innerText =
-        `Tide now at ${selectedStation.name}: ${activeTideValue > 0 ? "+" : ""}${activeTideValue.toFixed(2)} ft`;
-    } else {
-      currentTideEl.innerText =
-        `Tide forecast for ${selectedTideDate} at ${selectedStation.name}: ${formatTideReadout(activeLineTimeMs, activeTideValue)}`;
-    }
-
-    currentTideEl.style.color = activeTideValue <= LOW_TIDE_ALERT_FT ? "#ff6a6a" : "#dff6ff";
-    lowTideAlertEl.textContent = activeTideValue <= LOW_TIDE_ALERT_FT ? "ALERT: LOW TIDE" : "";
+    currentTideEl.style.color    = nowValue <= LOW_TIDE_ALERT_FT ? "#ff6a6a" : "#dff6ff";
+    lowTideAlertEl.textContent   = nowValue <= LOW_TIDE_ALERT_FT ? "ALERT: LOW TIDE" : "";
   } else {
-    currentTideEl.innerText = "";
-    currentTideEl.style.color = "#dff6ff";
-    lowTideAlertEl.textContent = "";
-    if (readoutEl) readoutEl.style.display = "none";
+    currentTideEl.innerText      = "";
+    currentTideEl.style.color    = "#dff6ff";
+    lowTideAlertEl.textContent   = "";
   }
 }
 function setupTideInteraction() {
   const canvas = document.getElementById("tideChart");
   if (!canvas) return;
 
-  /* Convert a clientX position to a tide time within the visible window */
-  const scrubFromClientX = (clientX) => {
-    if (!tidePredictions.length) return;
-    const metrics = getTideChartMetrics(canvas);
-    const rect    = canvas.getBoundingClientRect();
-    const scaleX  = rect.width ? canvas.width / rect.width : 1;
-    const rawX    = (clientX - rect.left) * scaleX;
-    const cx      = clamp(rawX, metrics.leftPad, canvas.width - metrics.rightPad);
-    const pct     = (cx - metrics.leftPad) / metrics.chartW;
-    tideScrubTimeMs = metrics.startMs + pct * (metrics.endMs - metrics.startMs);
-    drawTide(tidePredictions);
-  };
-
   if (isMobile()) {
     /* ---------------------------------------------------------------
-       MOBILE touch behaviour:
-       • Press and hold (≥380ms without moving) → show scrub readout line
-         then drag finger to move the line; release to dismiss it.
-       • Quick drag (move before hold fires) → pan the visible window
+       MOBILE touch:
+       • Drag left/right → pan the visible 3-hour window
+       • Tap (no movement) → snap back to current time
     --------------------------------------------------------------- */
     let touchStartX      = null;
     let touchStartOffset = null;
-    let holdTimer        = null;
-    let mode             = null; /* "hold" | "pan" | null */
-
-    const HOLD_MS  = 380;
-    const PAN_PX   = 6; /* px of movement before we commit to pan */
+    let hasMoved         = false;
+    const PAN_PX         = 8;
 
     canvas.addEventListener("touchstart", (e) => {
       if (layoutEditMode || !tidePredictions.length) return;
-      e.preventDefault(); /* prevent scroll while interacting with chart */
+      e.preventDefault();
       touchStartX      = e.touches[0].clientX;
       touchStartOffset = tideViewOffsetMs;
-      mode             = null;
-
-      holdTimer = setTimeout(() => {
-        if (mode === null) {
-          /* committed to hold — show scrub line at current finger position */
-          mode = "hold";
-          tideDragging = true;
-          scrubFromClientX(touchStartX);
-        }
-      }, HOLD_MS);
+      hasMoved         = false;
     }, { passive: false });
 
     canvas.addEventListener("touchmove", (e) => {
-      if (layoutEditMode || !tidePredictions.length || touchStartX === null) return;
+      if (touchStartX === null || layoutEditMode || !tidePredictions.length) return;
       const dx = e.touches[0].clientX - touchStartX;
-
-      if (mode === "hold") {
-        /* drag the scrub line */
-        scrubFromClientX(e.touches[0].clientX);
-
-      } else if (mode === "pan" || Math.abs(dx) > PAN_PX) {
-        /* committed to pan — cancel hold timer */
-        if (mode === null) {
-          clearTimeout(holdTimer);
-          holdTimer = null;
-          mode = "pan";
-        }
-        const visibleMs  = getTideVisibleHours() * 3600 * 1000;
-        const msPerPx    = visibleMs / (canvas.offsetWidth || 1);
-        const firstMs    = tidePredictions[0].timeMs;
-        const lastMs     = tidePredictions[tidePredictions.length - 1].timeMs;
-        const maxOffset  = Math.max(0, (lastMs - firstMs) - visibleMs);
+      if (Math.abs(dx) > PAN_PX) {
+        hasMoved = true;
+        const visibleMs = getTideVisibleHours() * 3600 * 1000;
+        const msPerPx   = visibleMs / (canvas.offsetWidth || 1);
+        const firstMs   = tidePredictions[0].timeMs;
+        const lastMs    = tidePredictions[tidePredictions.length - 1].timeMs;
+        const maxOffset = Math.max(0, (lastMs - firstMs) - visibleMs);
         tideViewOffsetMs = clamp(touchStartOffset - dx * msPerPx, 0, maxOffset);
         drawTide(tidePredictions);
       }
     }, { passive: true });
 
     canvas.addEventListener("touchend", () => {
-      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-      if (mode === "hold") {
-        /* release — dismiss scrub line */
-        tideDragging    = false;
-        tideScrubTimeMs = null;
+      if (!hasMoved && touchStartX !== null) {
+        /* tap — snap back to current time */
+        tideViewOffsetMs = 0;
         drawTide(tidePredictions);
       }
-      mode         = null;
-      touchStartX  = null;
+      touchStartX = null;
     });
 
   } else {
     /* ---------------------------------------------------------------
-       DESKTOP: original mouse click-drag scrub (unchanged)
+       DESKTOP: mouse click-drag to scrub (unchanged behaviour)
     --------------------------------------------------------------- */
+    const scrubFromClientX = (clientX) => {
+      if (!tidePredictions.length) return;
+      const metrics = getTideChartMetrics(canvas);
+      const rect    = canvas.getBoundingClientRect();
+      const scaleX  = rect.width ? canvas.width / rect.width : 1;
+      const rawX    = (clientX - rect.left) * scaleX;
+      const cx      = clamp(rawX, metrics.leftPad, canvas.width - metrics.rightPad);
+      const pct     = (cx - metrics.leftPad) / metrics.chartW;
+      tideScrubTimeMs = metrics.startMs + pct * (metrics.endMs - metrics.startMs);
+      drawTide(tidePredictions);
+    };
+
     canvas.addEventListener("mousedown", (e) => {
       if (layoutEditMode || e.button !== 0 || !tidePredictions.length) return;
       tideDragging = true;

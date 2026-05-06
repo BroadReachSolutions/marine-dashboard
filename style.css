@@ -1209,7 +1209,7 @@ body.layout-edit .widget.theme-clean {
 
   /* Override the JS transform-scale approach — let widgets flow naturally */
   #dashboard {
-    position: static;
+    position: relative;
     width: 100% !important;
     height: auto !important;
     transform: none !important;
@@ -1220,15 +1220,25 @@ body.layout-edit .widget.theme-clean {
     box-sizing: border-box;
   }
 
+  /* In edit mode, dashboard needs a fixed height so absolute widgets have room */
+  body.layout-edit #dashboard {
+    min-height: 100vh;
+  }
+
   /* All widgets: stack vertically, full width */
   .widget {
-    position: static !important;
+    position: relative !important;
     width: 100% !important;
     left: auto !important;
     top: auto !important;
     box-sizing: border-box;
     border-radius: 14px;
     overflow: visible;
+  }
+
+  /* In edit mode, allow absolute positioning for drag */
+  body.layout-edit .widget {
+    position: absolute !important;
   }
 
   .widgetFrame {
@@ -1325,6 +1335,11 @@ body.layout-edit .widget.theme-clean {
 
   #tideChart:active {
     cursor: grabbing;
+  }
+
+  /* Hide HTML tide line element on mobile — drawn on canvas instead */
+  #tideLine {
+    display: none !important;
   }
 
   /* Temperature widget */
