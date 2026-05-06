@@ -1220,9 +1220,9 @@ body.layout-edit .widget.theme-clean {
     box-sizing: border-box;
   }
 
-  /* In edit mode, dashboard needs a fixed height so absolute widgets have room */
+  /* Edit mode: keep normal flow, just add some bottom padding */
   body.layout-edit #dashboard {
-    min-height: 100vh;
+    padding-bottom: 80px;
   }
 
   /* All widgets: stack vertically, full width */
@@ -1236,9 +1236,19 @@ body.layout-edit .widget.theme-clean {
     overflow: visible;
   }
 
-  /* In edit mode, allow absolute positioning for drag */
+  /* Edit mode: widgets stay in flow but show a draggable handle overlay.
+     We disable the JS absolute-position drag on mobile since flexbox
+     layout handles ordering. The handle bar is just visual in mobile edit. */
   body.layout-edit .widget {
-    position: absolute !important;
+    position: relative !important;
+    outline: 2px dashed rgba(140,200,230,0.5) !important;
+    outline-offset: 2px;
+  }
+
+  /* In mobile edit mode, disable touch-action on handles so drag works */
+  body.layout-edit .widgetHandle {
+    touch-action: none;
+    cursor: grab;
   }
 
   .widgetFrame {
@@ -1256,13 +1266,16 @@ body.layout-edit .widget.theme-clean {
     z-index: 99999 !important;
   }
 
-  /* Order: stations → wind → temp → tideStatus → forecast → tideChart */
-  #stationsWidget  { order: 1; }
-  #windWidget      { order: 2; height: 300px !important; }
-  #tempWidget      { order: 3; height: 100px !important; }
-  #tideStatusWidget{ order: 4; height: 80px !important; }
-  #forecastWidget  { order: 5; height: 220px !important; }
-  #tideChartWidget { order: 6; height: 240px !important; }
+  /* New order: wind/compass → forecast → tide → stations */
+  #windWidget      { order: 1; height: 320px !important; }
+  #forecastWidget  { order: 2; height: 220px !important; }
+  #tideStatusWidget{ order: 3; height: 80px !important; }
+  #tideChartWidget { order: 4; height: 260px !important; }
+  #stationsWidget  { order: 5; }
+  #layoutWidget    { order: 6; }
+
+  /* Hide temp widget on mobile — data shown inside wind widget */
+  #tempWidget { display: none !important; }
 
   /* Stations bar — stack controls vertically on narrow screens */
   .stationPanel {
@@ -1342,6 +1355,29 @@ body.layout-edit .widget.theme-clean {
     display: none !important;
   }
 
+  /* Inline temp/humidity inside wind widget on mobile */
+  .windInlineTemp {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .windInlineTempVal {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--row1-color, #f5fbff);
+    font-family: var(--row1-font, "Segoe UI");
+    line-height: 1;
+  }
+
+  .windInlineHumVal {
+    font-size: 15px;
+    color: var(--row2-color, #9fc2d9);
+    font-family: var(--row2-font, "Segoe UI");
+  }
+
   /* Temperature widget */
   .tempBox {
     padding: 14px 10px;
@@ -1374,3 +1410,10 @@ body.layout-edit .widget.theme-clean {
     z-index: 99998;
   }
 }
+
+  /* Widget being dragged during mobile reorder */
+  .widget.mobile-dragging {
+    opacity: 0.6;
+    outline: 2px solid rgba(100,200,255,0.8) !important;
+    z-index: 999;
+  }

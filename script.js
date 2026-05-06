@@ -156,6 +156,7 @@ function applyMobileWidgetOverrides() {
     const el = document.getElementById(id);
     if (el) el.classList.add("mobile-hidden");
   });
+  loadMobileOrder();
 }
 
 function removeMobileWidgetOverrides() {
@@ -248,17 +249,134 @@ function setupLayoutEditor() {
     toggle.classList.toggle("active", layoutEditMode);
     toggle.textContent = layoutEditMode ? "Done Editing" : "Edit Layout";
 
-    /* important: re-apply hidden widgets/settings when switching modes */
     applyAllWidgetSettings();
 
-    if (!layoutEditMode) {
-      closeAllSettingsPanels();
-      saveLayout();
-      saveAllSettings();
+    if (isMobile()) {
+      if (layoutEditMode) {
+        setupMobileReorder();
+      } else {
+        teardownMobileReorder();
+        closeAllSettingsPanels();
+        saveMobileOrder();
+        saveAllSettings();
+      }
+    } else {
+      if (!layoutEditMode) {
+        closeAllSettingsPanels();
+        saveLayout();
+        saveAllSettings();
+      }
     }
   });
 
   widgets.forEach(makeWidgetInteractive);
+}
+
+/* ==========================================================================
+   MOBILE DRAG-TO-REORDER
+   ========================================================================== */
+let mobileReorderCleanup = null;
+
+function setupMobileReorder() {
+  const dashboard = document.getElementById("dashboard");
+  if (!dashboard) return;
+
+  const widgets = [...dashboard.querySelectorAll(".widget:not(#layoutWidget)")];
+  let dragEl    = null;
+  let dragGhost = null;
+  let startY    = 0;
+  let startOrder = 0;
+
+  function getOrder(el) {
+    return parseInt(el.style.order || getComputedStyle(el).order || "0") || 0;
+  }
+
+  function onHandleTouchStart(e) {
+    if (!layoutEditMode) return;
+    const widget = e.currentTarget.closest(".widget");
+    if (!widget) return;
+    e.preventDefault();
+
+    dragEl     = widget;
+    startY     = e.touches[0].clientY;
+    startOrder = getOrder(widget);
+
+    dragEl.classList.add("mobile-dragging");
+  }
+
+  function onHandleTouchMove(e) {
+    if (!dragEl) return;
+    const dy     = e.touches[0].clientY - startY;
+    const itemH  = dragEl.offsetHeight + 10; /* approximate widget height + gap */
+    const shift  = Math.round(dy / itemH);
+    const newOrder = Math.max(1, Math.min(widgets.length, startOrder + shift));
+
+    /* swap orders with whoever is currently at newOrder */
+    widgets.forEach(w => {
+      if (w === dragEl) {
+        w.style.order = newOrder;
+      } else {
+        const wo = getOrder(w);
+        if (wo === newOrder) {
+          w.style.order = startOrder;
+        }
+      }
+    });
+  }
+
+  function onHandleTouchEnd() {
+    if (dragEl) dragEl.classList.remove("mobile-dragging");
+    dragEl = null;
+  }
+
+  /* attach to each widget handle */
+  widgets.forEach(w => {
+    const handle = w.querySelector(".widgetHandle");
+    if (!handle) return;
+    handle.addEventListener("touchstart", onHandleTouchStart, { passive: false });
+    handle.addEventListener("touchmove",  onHandleTouchMove,  { passive: true });
+    handle.addEventListener("touchend",   onHandleTouchEnd);
+  });
+
+  mobileReorderCleanup = () => {
+    widgets.forEach(w => {
+      const handle = w.querySelector(".widgetHandle");
+      if (!handle) return;
+      handle.removeEventListener("touchstart", onHandleTouchStart);
+      handle.removeEventListener("touchmove",  onHandleTouchMove);
+      handle.removeEventListener("touchend",   onHandleTouchEnd);
+      w.classList.remove("mobile-dragging");
+    });
+  };
+}
+
+function teardownMobileReorder() {
+  if (mobileReorderCleanup) {
+    mobileReorderCleanup();
+    mobileReorderCleanup = null;
+  }
+}
+
+function saveMobileOrder() {
+  const dashboard = document.getElementById("dashboard");
+  if (!dashboard) return;
+  const order = {};
+  dashboard.querySelectorAll(".widget").forEach(w => {
+    if (w.dataset.widget) order[w.dataset.widget] = w.style.order || "";
+  });
+  localStorage.setItem("marineMobileOrder", JSON.stringify(order));
+}
+
+function loadMobileOrder() {
+  const raw = localStorage.getItem("marineMobileOrder");
+  if (!raw) return;
+  try {
+    const order = JSON.parse(raw);
+    Object.entries(order).forEach(([key, val]) => {
+      const el = document.querySelector(`.widget[data-widget="${key}"]`);
+      if (el && val) el.style.order = val;
+    });
+  } catch (e) {}
 }
 
 function makeWidgetInteractive(widget) {
@@ -1035,9 +1153,11 @@ async function loadWeather() {
 }
 
 function renderCurrentConditions(data) {
-  const nowHour = new Date().getHours();
-  const idx = data.hourly.time.findIndex(t => new Date(t).getHours() === nowHour);
-  const i = idx >= 0 ? idx : 0;
+  const now = new Date();
+  let idx = data.hourly.time.findIndex(t => new Date(t) >= now);
+  if (idx < 0) idx = 0;
+  if (idx > 0) idx = idx - 1;
+  const i = idx;
 
   const temp = Math.round(data.hourly.temperature_2m[i]);
   const humidity = Math.round(data.hourly.relative_humidity_2m[i]);
@@ -1078,6 +1198,30 @@ function renderWindReadings() {
   if (botEl) {
     botEl.innerHTML = botHtml;
     botEl.style.transform = `translateY(${windBotOffset}px)`;
+  }
+
+  /* On mobile: inject temp + humidity directly into wind widget */
+  if (isMobile()) {
+    const tempMain = document.getElementById("tempMain");
+    const tempSub  = document.getElementById("tempSub");
+    let inlineTemp = document.getElementById("windInlineTemp");
+
+    if (!inlineTemp) {
+      inlineTemp = document.createElement("div");
+      inlineTemp.id = "windInlineTemp";
+      inlineTemp.className = "windInlineTemp";
+      const windBox = document.querySelector("#windWidget .windBox");
+      if (windBox) windBox.appendChild(inlineTemp);
+    }
+
+    const tempText = tempMain ? tempMain.textContent : "";
+    const humText  = tempSub  ? tempSub.textContent  : "";
+    if (tempText) {
+      inlineTemp.innerHTML = `
+        <span class="windInlineTempVal">${tempText}</span>
+        <span class="windInlineHumVal">${humText}</span>
+      `;
+    }
   }
 }
 
@@ -1904,6 +2048,57 @@ function drawTide(series) {
     ctx.fillText(label, pillX + pillW / 2, pillY + 15);
   }
 
+  /* ── SCRUB LINE — shown during long-press drag ───────────────────── */
+  if (tideDragging && tideScrubTimeMs != null) {
+    const scrubValue = getTideAtTime(series, tideScrubTimeMs);
+    const scrubX     = xForTime(tideScrubTimeMs);
+    const scrubY     = scrubValue != null ? yForVal(scrubValue) : topPad + chartH / 2;
+
+    /* yellow vertical line */
+    ctx.save();
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth   = 2;
+    ctx.shadowColor = "rgba(255,209,102,0.5)";
+    ctx.shadowBlur  = 6;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(scrubX, topPad);
+    ctx.lineTo(scrubX, topPad + chartH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    /* dot */
+    ctx.beginPath();
+    ctx.arc(scrubX, scrubY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffd166";
+    ctx.fill();
+
+    /* readout pill */
+    if (scrubValue != null) {
+      const scrubLabel = formatTideReadout(tideScrubTimeMs, scrubValue);
+      ctx.font         = "bold 13px Arial";
+      const stw        = ctx.measureText(scrubLabel).width;
+      const spW        = stw + 16;
+      const spH        = 22;
+      const spX        = clamp(scrubX - spW / 2, leftPad + 2, leftPad + chartW - spW - 2);
+      const spY        = topPad + 30; /* below the now-line pill */
+
+      ctx.fillStyle    = "rgba(20,40,55,0.95)";
+      ctx.beginPath();
+      ctx.roundRect(spX, spY, spW, spH, 6);
+      ctx.fill();
+
+      ctx.strokeStyle  = "rgba(255,209,102,0.7)";
+      ctx.lineWidth    = 1;
+      ctx.stroke();
+
+      ctx.fillStyle    = "#ffd166";
+      ctx.textAlign    = "center";
+      ctx.fillText(scrubLabel, spX + spW / 2, spY + 15);
+    }
+  }
+
   /* Hide the HTML line element — we draw on canvas */
   if (htmlLine) htmlLine.style.display = "none";
 
@@ -1935,27 +2130,57 @@ function setupTideInteraction() {
   if (isMobile()) {
     /* ---------------------------------------------------------------
        MOBILE touch:
-       • Drag left/right → pan the visible 3-hour window
-       • Tap (no movement) → snap back to current time
+       • Short drag  → pan the visible 3-hour window
+       • Tap         → snap back to current time
+       • Long press (≥400ms, no movement) → show yellow scrub line;
+         drag while holding to move it; release to dismiss
     --------------------------------------------------------------- */
     let touchStartX      = null;
     let touchStartOffset = null;
-    let hasMoved         = false;
+    let mode             = null;   /* null | "pan" | "scrub" */
+    let holdTimer        = null;
     const PAN_PX         = 8;
+    const HOLD_MS        = 400;
+
+    const scrubFromClientX = (clientX) => {
+      const metrics = getTideChartMetrics(canvas);
+      const rect    = canvas.getBoundingClientRect();
+      const rawX    = (clientX - rect.left) * (canvas.width / (rect.width || 1));
+      const cx      = clamp(rawX, metrics.leftPad, canvas.width - metrics.rightPad);
+      const pct     = (cx - metrics.leftPad) / metrics.chartW;
+      tideScrubTimeMs = metrics.startMs + pct * (metrics.endMs - metrics.startMs);
+      drawTide(tidePredictions);
+    };
 
     canvas.addEventListener("touchstart", (e) => {
       if (layoutEditMode || !tidePredictions.length) return;
       e.preventDefault();
       touchStartX      = e.touches[0].clientX;
       touchStartOffset = tideViewOffsetMs;
-      hasMoved         = false;
+      mode             = null;
+      tideDragging     = false;
+
+      holdTimer = setTimeout(() => {
+        if (mode === null) {
+          mode         = "scrub";
+          tideDragging = true;
+          scrubFromClientX(touchStartX);
+        }
+      }, HOLD_MS);
     }, { passive: false });
 
     canvas.addEventListener("touchmove", (e) => {
       if (touchStartX === null || layoutEditMode || !tidePredictions.length) return;
       const dx = e.touches[0].clientX - touchStartX;
-      if (Math.abs(dx) > PAN_PX) {
-        hasMoved = true;
+
+      if (mode === "scrub") {
+        scrubFromClientX(e.touches[0].clientX);
+      } else if (mode === "pan" || Math.abs(dx) > PAN_PX) {
+        if (mode === null) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+          mode = "pan";
+        }
         const visibleMs = getTideVisibleHours() * 3600 * 1000;
         const msPerPx   = visibleMs / (canvas.offsetWidth || 1);
         const firstMs   = tidePredictions[0].timeMs;
@@ -1967,11 +2192,17 @@ function setupTideInteraction() {
     }, { passive: true });
 
     canvas.addEventListener("touchend", () => {
-      if (!hasMoved && touchStartX !== null) {
-        /* tap — snap back to current time */
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      if (mode === "scrub") {
+        tideDragging    = false;
+        tideScrubTimeMs = null;
+        drawTide(tidePredictions);
+      } else if (mode === null) {
+        /* pure tap — snap to current time */
         tideViewOffsetMs = 0;
         drawTide(tidePredictions);
       }
+      mode        = null;
       touchStartX = null;
     });
 
