@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#0a1628",
   "theme_color": "#0a1628",
-  "orientation": "landscape",
+  "orientation": "portrait"
   "icons": [
     {
       "src": "staugustine-sailing-logo.png",
