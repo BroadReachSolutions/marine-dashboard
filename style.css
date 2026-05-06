@@ -1284,7 +1284,7 @@ body.layout-edit .widget.theme-clean {
 
   /* Forecast: cards fill the full widget height, larger touch targets */
   .forecastWrap {
-    padding: 10px 8px 30px 8px; /* bottom room for hint arrows */
+    padding: 10px 8px 10px 8px;
     touch-action: pan-y;
     user-select: none;
   }
@@ -1307,35 +1307,7 @@ body.layout-edit .widget.theme-clean {
   .card .windMini,
   .card .dirMini{ font-size: 13px; }
 
-  /* Swipe hint bar at bottom of forecast */
-  .forecastDragHint {
-    position: absolute;
-    bottom: 6px;
-    left: 0;
-    right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    pointer-events: none;
-  }
 
-  .forecastArrow {
-    font-size: 16px;
-    color: rgba(125, 186, 220, 0.9);
-    transition: opacity 0.2s;
-  }
-
-  .forecastArrow.faded {
-    opacity: 0.2;
-  }
-
-  .forecastHintLabel {
-    font-size: 11px;
-    color: rgba(125, 186, 220, 0.55);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
 
   /* Tide chart: taller canvas, touch-draggable */
   .tideSection {

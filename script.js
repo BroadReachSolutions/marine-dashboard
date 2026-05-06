@@ -267,94 +267,98 @@ function makeWidgetInteractive(widget) {
 
   if (!handle || !resize) return;
 
-  let dragStart = null;
+  let dragStart   = null;
   let resizeStart = null;
 
-  handle.addEventListener("mousedown", (e) => {
-    if (!layoutEditMode) return;
-    if (e.target.closest(".widgetSettingsBtn")) return;
-    if (e.target.closest(".widgetHideBtn")) return;
-    if (e.target.closest(".widgetSettingsPanel")) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    dragStart = {
-      startX: e.clientX,
-      startY: e.clientY,
-      left: parseFloat(widget.style.left || widget.offsetLeft),
-      top: parseFloat(widget.style.top || widget.offsetTop),
-      scale: getDashboardScale()
-    };
-
-    window.addEventListener("mousemove", onDragMove);
-    window.addEventListener("mouseup", onDragEnd);
-  });
-
-  resize.addEventListener("mousedown", (e) => {
-    if (!layoutEditMode) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    resizeStart = {
-  startX: e.clientX,
-  startY: e.clientY,
-  width: widget.offsetWidth,
-  height: widget.offsetHeight,
-  scale: getDashboardScale()
-};
-
-    window.addEventListener("mousemove", onResizeMove);
-    window.addEventListener("mouseup", onResizeEnd);
-  });
+  /* ---- shared move/end handlers ---- */
+  function getClientXY(e) {
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
 
   function onDragMove(e) {
     if (!dragStart) return;
-
-    const dx = (e.clientX - dragStart.startX) / dragStart.scale;
-    const dy = (e.clientY - dragStart.startY) / dragStart.scale;
-
-    const left = dragStart.left + dx;
-    const top = dragStart.top + dy;
-
-    widget.style.left = `${left}px`;
-    widget.style.top = `${top}px`;
+    const { x, y } = getClientXY(e);
+    const dx = (x - dragStart.startX) / dragStart.scale;
+    const dy = (y - dragStart.startY) / dragStart.scale;
+    widget.style.left = `${dragStart.left + dx}px`;
+    widget.style.top  = `${dragStart.top  + dy}px`;
   }
 
   function onDragEnd() {
     dragStart = null;
     saveLayout();
-
     window.removeEventListener("mousemove", onDragMove);
-    window.removeEventListener("mouseup", onDragEnd);
+    window.removeEventListener("mouseup",   onDragEnd);
+    window.removeEventListener("touchmove", onDragMove);
+    window.removeEventListener("touchend",  onDragEnd);
   }
 
   function onResizeMove(e) {
     if (!resizeStart) return;
-
-    const dx = (e.clientX - resizeStart.startX) / resizeStart.scale;
-    const dy = (e.clientY - resizeStart.startY) / resizeStart.scale;
-
-    widget.style.width = `${Math.max(120, resizeStart.width + dx)}px`;
-    widget.style.height = `${Math.max(40, resizeStart.height + dy)}px`;
-
-    if (widget.dataset.widget === "tideChart" && tidePredictions.length) {
-      drawTide(tidePredictions);
-    }
+    const { x, y } = getClientXY(e);
+    const dx = (x - resizeStart.startX) / resizeStart.scale;
+    const dy = (y - resizeStart.startY) / resizeStart.scale;
+    widget.style.width  = `${Math.max(120, resizeStart.width  + dx)}px`;
+    widget.style.height = `${Math.max(40,  resizeStart.height + dy)}px`;
+    if (widget.dataset.widget === "tideChart" && tidePredictions.length) drawTide(tidePredictions);
   }
 
   function onResizeEnd() {
     resizeStart = null;
     saveLayout();
-
-    if (widget.dataset.widget === "tideChart" && tidePredictions.length) {
-      drawTide(tidePredictions);
-    }
-
+    if (widget.dataset.widget === "tideChart" && tidePredictions.length) drawTide(tidePredictions);
     window.removeEventListener("mousemove", onResizeMove);
-    window.removeEventListener("mouseup", onResizeEnd);
+    window.removeEventListener("mouseup",   onResizeEnd);
+    window.removeEventListener("touchmove", onResizeMove);
+    window.removeEventListener("touchend",  onResizeEnd);
   }
+
+  /* ---- drag handle: mouse + touch ---- */
+  function startDrag(e) {
+    if (!layoutEditMode) return;
+    if (e.target.closest(".widgetSettingsBtn")) return;
+    if (e.target.closest(".widgetHideBtn")) return;
+    if (e.target.closest(".widgetSettingsPanel")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const { x, y } = getClientXY(e);
+    dragStart = {
+      startX: x, startY: y,
+      left:  parseFloat(widget.style.left  || widget.offsetLeft),
+      top:   parseFloat(widget.style.top   || widget.offsetTop),
+      scale: getDashboardScale()
+    };
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup",   onDragEnd);
+    window.addEventListener("touchmove", onDragMove, { passive: false });
+    window.addEventListener("touchend",  onDragEnd);
+  }
+
+  handle.addEventListener("mousedown", startDrag);
+  handle.addEventListener("touchstart", startDrag, { passive: false });
+
+  /* ---- resize handle: mouse + touch ---- */
+  function startResize(e) {
+    if (!layoutEditMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const { x, y } = getClientXY(e);
+    resizeStart = {
+      startX: x, startY: y,
+      width:  widget.offsetWidth,
+      height: widget.offsetHeight,
+      scale:  getDashboardScale()
+    };
+    window.addEventListener("mousemove", onResizeMove);
+    window.addEventListener("mouseup",   onResizeEnd);
+    window.addEventListener("touchmove", onResizeMove, { passive: false });
+    window.addEventListener("touchend",  onResizeEnd);
+  }
+
+  resize.addEventListener("mousedown", startResize);
+  resize.addEventListener("touchstart", startResize, { passive: false });
 }
 
 /* ==========================================================================
@@ -779,38 +783,53 @@ function attachEvents() {
   const forecastWidget = document.getElementById("forecastWidget");
   if (forecastWidget) {
     if (isMobile()) {
-      /* ---- Mobile: drag left/right to scroll forecast hours ---- */
-      let touchStartX = null;
-      let touchStartOffset = null;
-      let touchMoved = false;
+      /* ---- Mobile: drag left/right to scroll forecast, tap to toggle weekly ---- */
+      let touchStartX      = null;
+      let touchStartHour   = 0;
+      let touchStartDay    = 0;
+      let touchMoved       = false;
+      const DRAG_THRESHOLD = 10; /* px before we commit to a drag */
 
       forecastWidget.addEventListener("touchstart", (e) => {
         if (layoutEditMode) return;
-        touchStartX = e.touches[0].clientX;
-        touchStartOffset = forecastDragOffset;
-        touchMoved = false;
+        touchStartX    = e.touches[0].clientX;
+        touchStartHour = forecastDragOffset;
+        touchStartDay  = weeklyDragOffset;
+        touchMoved     = false;
       }, { passive: true });
 
       forecastWidget.addEventListener("touchmove", (e) => {
         if (touchStartX === null || layoutEditMode) return;
         const dx = e.touches[0].clientX - touchStartX;
-        if (Math.abs(dx) > 10) {
+        if (Math.abs(dx) > DRAG_THRESHOLD) {
           touchMoved = true;
-          const cardW = forecastWidget.offsetWidth / getForecastVisibleHours();
-          const delta = -Math.round(dx / cardW);
-          forecastDragOffset = Math.max(0, Math.min(
-            WEATHER_HOURS - getForecastVisibleHours(),
-            touchStartOffset + delta
-          ));
+          if (weatherViewMode === "weekly") {
+            /* drag weekly cards */
+            const cardW = forecastWidget.offsetWidth / WEEKLY_VISIBLE_DAYS;
+            const delta = -Math.round(dx / cardW);
+            weeklyDragOffset = Math.max(0, Math.min(
+              (_lastWeatherData ? _lastWeatherData.daily.time.length : 7) - WEEKLY_VISIBLE_DAYS,
+              touchStartDay + delta
+            ));
+          } else {
+            /* drag hourly cards */
+            const cardW = forecastWidget.offsetWidth / getForecastVisibleHours();
+            const delta = -Math.round(dx / cardW);
+            forecastDragOffset = Math.max(0, Math.min(
+              WEATHER_HOURS - getForecastVisibleHours(),
+              touchStartHour + delta
+            ));
+          }
           renderWeather(null);
         }
       }, { passive: true });
 
       forecastWidget.addEventListener("touchend", async () => {
         if (!touchMoved && touchStartX !== null) {
-          /* tap — toggle hourly/weekly */
+          /* tap — toggle hourly/weekly and reset offsets */
           forecastDragOffset = 0;
-          weatherViewMode = weatherViewMode === "hourly" ? "weekly" : "hourly";
+          weeklyDragOffset   = 0;
+          weatherViewMode    = weatherViewMode === "hourly" ? "weekly" : "hourly";
           await loadWeather();
         }
         touchStartX = null;
@@ -1504,6 +1523,10 @@ async function geocodeMarineAddress(address) {
 /* cache last weather data so mobile drag can re-render without a fetch */
 let _lastWeatherData = null;
 
+/* Mobile weekly drag offset (index into daily array) */
+let weeklyDragOffset = 0;
+const WEEKLY_VISIBLE_DAYS = 3;
+
 function renderWeather(data) {
   if (data) _lastWeatherData = data;
   const d = _lastWeatherData;
@@ -1512,8 +1535,23 @@ function renderWeather(data) {
 
   wrap.innerHTML = "";
 
+  /* remove any old swipe hint */
+  const oldHint = wrap.parentElement.querySelector(".forecastDragHint");
+  if (oldHint) oldHint.remove();
+
   if (weatherViewMode === "weekly") {
-    for (let i = 0; i < 7; i++) {
+    const visibleDays = isMobile() ? WEEKLY_VISIBLE_DAYS : 7;
+    const totalDays   = d.daily.time.length;
+
+    if (isMobile()) {
+      weeklyDragOffset = Math.max(0, Math.min(weeklyDragOffset, totalDays - visibleDays));
+    } else {
+      weeklyDragOffset = 0;
+    }
+
+    for (let n = 0; n < visibleDays; n++) {
+      const i = weeklyDragOffset + n;
+      if (i >= totalDays) break;
       const card = document.createElement("div");
       card.className = "card weekly";
       const code = d.daily.weathercode[i];
@@ -1530,13 +1568,13 @@ function renderWeather(data) {
     return;
   }
 
+  /* --- Hourly --- */
   const visibleHours = getForecastVisibleHours();
-  const currentHour = new Date().getHours();
+  const currentHour  = new Date().getHours();
   let startIndex = d.hourly.time.findIndex(t => new Date(t).getHours() === currentHour);
   if (startIndex < 0) startIndex = 0;
 
   if (isMobile()) {
-    /* clamp drag offset */
     const maxOffset = Math.max(0, WEATHER_HOURS - visibleHours);
     forecastDragOffset = Math.max(0, Math.min(forecastDragOffset, maxOffset));
     startIndex += forecastDragOffset;
@@ -1545,8 +1583,7 @@ function renderWeather(data) {
   for (let n = 0; n < visibleHours; n++) {
     const i = startIndex + n;
     if (i >= d.hourly.time.length) break;
-
-    const code = d.hourly.weathercode[i];
+    const code     = d.hourly.weathercode[i];
     const hourText = formatHour(d.hourly.time[i]);
     const rain  = Math.round(d.hourly.precipitation_probability[i]);
     const wind  = Math.round(d.hourly.windspeed_10m[i]);
@@ -1567,24 +1604,6 @@ function renderWeather(data) {
       ${danger ? `<div class="boxAlert">Alert</div>` : ""}
     `;
     wrap.appendChild(card);
-  }
-
-  /* mobile swipe hint arrows */
-  if (isMobile()) {
-    const totalAvailable = Math.min(WEATHER_HOURS, d.hourly.time.length - (startIndex - forecastDragOffset));
-    const canGoLeft  = forecastDragOffset > 0;
-    const canGoRight = forecastDragOffset < totalAvailable - visibleHours;
-    let hint = wrap.parentElement.querySelector(".forecastDragHint");
-    if (!hint) {
-      hint = document.createElement("div");
-      hint.className = "forecastDragHint";
-      wrap.parentElement.appendChild(hint);
-    }
-    hint.innerHTML = `
-      <span class="forecastArrow ${canGoLeft ? "" : "faded"}">◀</span>
-      <span class="forecastHintLabel">swipe</span>
-      <span class="forecastArrow ${canGoRight ? "" : "faded"}">▶</span>
-    `;
   }
 }
 
@@ -1774,7 +1793,16 @@ function drawTide(series) {
   ctx.textAlign = "left";
   let lastLabeledHour = null;
 
+  /* clip labels so they only appear within the visible chart area */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(leftPad, topPad, chartW, chartH + bottomPad);
+  ctx.clip();
+
   for (const point of series) {
+    /* skip points outside the visible window */
+    if (point.timeMs < startMs || point.timeMs > endMs) continue;
+
     const dt = new Date(point.timeMs);
     const hourKey = `${dt.getMonth()}-${dt.getDate()}-${dt.getHours()}`;
 
@@ -1783,17 +1811,21 @@ function drawTide(series) {
       const x = xForTime(point.timeMs);
       const y = yForValue(point.value);
 
+      /* keep label from overflowing left or right edge */
+      const labelX = clamp(x - 18, leftPad, c.width - rightPad - 38);
+
       ctx.fillStyle = "white";
       ctx.fillText(
         dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true }),
-        x - 18,
+        labelX,
         c.height - 16
       );
 
       ctx.fillStyle = "#bfefff";
-      ctx.fillText(`${point.value.toFixed(1)}ft`, x - 18, y - 10);
+      ctx.fillText(`${point.value.toFixed(1)}ft`, labelX, y - 10);
     }
   }
+  ctx.restore();
 
   /* dedupe slack points so only one label shows per cycle */
   const rawSlackPoints = findSlackPoints(series);
@@ -1900,114 +1932,108 @@ function setupTideInteraction() {
   const canvas = document.getElementById("tideChart");
   if (!canvas) return;
 
-  /* ------------------------------------------------------------------ */
-  /*  Shared: convert a clientX to a scrub time within the visible window */
-  /* ------------------------------------------------------------------ */
-  const updateScrubFromClientX = (clientX) => {
+  /* Convert a clientX position to a tide time within the visible window */
+  const scrubFromClientX = (clientX) => {
     if (!tidePredictions.length) return;
     const metrics = getTideChartMetrics(canvas);
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width ? canvas.width / rect.width : 1;
-    const rawX = (clientX - rect.left) * scaleX;
-    const clampedX = clamp(rawX, metrics.leftPad, canvas.width - metrics.rightPad);
-    const pct = (clampedX - metrics.leftPad) / metrics.chartW;
+    const rect    = canvas.getBoundingClientRect();
+    const scaleX  = rect.width ? canvas.width / rect.width : 1;
+    const rawX    = (clientX - rect.left) * scaleX;
+    const cx      = clamp(rawX, metrics.leftPad, canvas.width - metrics.rightPad);
+    const pct     = (cx - metrics.leftPad) / metrics.chartW;
     tideScrubTimeMs = metrics.startMs + pct * (metrics.endMs - metrics.startMs);
     drawTide(tidePredictions);
   };
 
   if (isMobile()) {
-    /* ---------------------------------------------------------------- */
-    /*  MOBILE: touch interaction                                        */
-    /*  - Short tap+hold (>350ms) → show scrub line, drag to move it    */
-    /*  - Regular drag (no hold) → pan the visible 3-hour window        */
-    /* ---------------------------------------------------------------- */
+    /* ---------------------------------------------------------------
+       MOBILE touch behaviour:
+       • Press and hold (≥380ms without moving) → show scrub readout line
+         then drag finger to move the line; release to dismiss it.
+       • Quick drag (move before hold fires) → pan the visible window
+    --------------------------------------------------------------- */
     let touchStartX      = null;
-    let touchStartY      = null;
-    let touchStartOffset = null; /* tideViewOffsetMs at touch start */
+    let touchStartOffset = null;
     let holdTimer        = null;
-    let isHolding        = false;
-    let hasPanned        = false;
+    let mode             = null; /* "hold" | "pan" | null */
+
+    const HOLD_MS  = 380;
+    const PAN_PX   = 6; /* px of movement before we commit to pan */
 
     canvas.addEventListener("touchstart", (e) => {
       if (layoutEditMode || !tidePredictions.length) return;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
+      e.preventDefault(); /* prevent scroll while interacting with chart */
+      touchStartX      = e.touches[0].clientX;
       touchStartOffset = tideViewOffsetMs;
-      isHolding = false;
-      hasPanned = false;
+      mode             = null;
 
-      /* start hold timer */
       holdTimer = setTimeout(() => {
-        if (!hasPanned) {
-          isHolding = true;
+        if (mode === null) {
+          /* committed to hold — show scrub line at current finger position */
+          mode = "hold";
           tideDragging = true;
-          updateScrubFromClientX(touchStartX);
+          scrubFromClientX(touchStartX);
         }
-      }, 350);
-    }, { passive: true });
+      }, HOLD_MS);
+    }, { passive: false });
 
     canvas.addEventListener("touchmove", (e) => {
-      if (layoutEditMode || !tidePredictions.length) return;
+      if (layoutEditMode || !tidePredictions.length || touchStartX === null) return;
       const dx = e.touches[0].clientX - touchStartX;
-      const dy = e.touches[0].clientY - touchStartY;
 
-      if (isHolding) {
-        /* scrub line drag */
-        updateScrubFromClientX(e.touches[0].clientX);
-      } else if (Math.abs(dx) > 8) {
-        /* pan — cancel hold timer */
-        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-        hasPanned = true;
+      if (mode === "hold") {
+        /* drag the scrub line */
+        scrubFromClientX(e.touches[0].clientX);
 
-        /* convert px drag to ms offset — each pixel = visibleMs / canvasWidth */
-        const visibleMs = getTideVisibleHours() * 3600 * 1000;
-        const msPerPx = visibleMs / canvas.offsetWidth;
-        const newOffset = touchStartOffset - dx * msPerPx;
-
-        /* clamp: can't go before first prediction or beyond last - visible window */
-        const firstMs = tidePredictions[0].timeMs;
-        const lastMs  = tidePredictions[tidePredictions.length - 1].timeMs;
-        const maxOffset = Math.max(0, (lastMs - firstMs) - visibleMs);
-        tideViewOffsetMs = clamp(newOffset, 0, maxOffset);
+      } else if (mode === "pan" || Math.abs(dx) > PAN_PX) {
+        /* committed to pan — cancel hold timer */
+        if (mode === null) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+          mode = "pan";
+        }
+        const visibleMs  = getTideVisibleHours() * 3600 * 1000;
+        const msPerPx    = visibleMs / (canvas.offsetWidth || 1);
+        const firstMs    = tidePredictions[0].timeMs;
+        const lastMs     = tidePredictions[tidePredictions.length - 1].timeMs;
+        const maxOffset  = Math.max(0, (lastMs - firstMs) - visibleMs);
+        tideViewOffsetMs = clamp(touchStartOffset - dx * msPerPx, 0, maxOffset);
         drawTide(tidePredictions);
       }
     }, { passive: true });
 
     canvas.addEventListener("touchend", () => {
       if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-      if (isHolding) {
-        /* release scrub line */
-        tideDragging = false;
+      if (mode === "hold") {
+        /* release — dismiss scrub line */
+        tideDragging    = false;
         tideScrubTimeMs = null;
         drawTide(tidePredictions);
       }
-      isHolding = false;
-      hasPanned = false;
+      mode         = null;
+      touchStartX  = null;
     });
 
   } else {
-    /* ---------------------------------------------------------------- */
-    /*  DESKTOP: original mouse scrub behaviour (unchanged)             */
-    /* ---------------------------------------------------------------- */
+    /* ---------------------------------------------------------------
+       DESKTOP: original mouse click-drag scrub (unchanged)
+    --------------------------------------------------------------- */
     canvas.addEventListener("mousedown", (e) => {
       if (layoutEditMode || e.button !== 0 || !tidePredictions.length) return;
       tideDragging = true;
-      updateScrubFromClientX(e.clientX);
+      scrubFromClientX(e.clientX);
       window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
+      window.addEventListener("mouseup",   onUp);
     });
 
-    function onMove(e) {
-      if (!tideDragging) return;
-      updateScrubFromClientX(e.clientX);
-    }
+    function onMove(e) { if (tideDragging) scrubFromClientX(e.clientX); }
 
     function onUp() {
-      tideDragging = false;
+      tideDragging    = false;
       tideScrubTimeMs = null;
       drawTide(tidePredictions);
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mouseup",   onUp);
     }
   }
 }
