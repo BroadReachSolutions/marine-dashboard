@@ -1180,3 +1180,210 @@ body.layout-edit .widget.theme-clean {
   font-weight: 300;
   margin: 0 2px;
 }
+
+/* ==========================================================================
+   MOBILE OVERRIDES — only active when body.is-mobile (< 768px)
+   Desktop styles are completely untouched above this line.
+   ========================================================================== */
+
+/* Hide widgets removed for mobile */
+.mobile-hidden {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+
+  /* Make the dashboard a normal scrollable page instead of a scaled canvas */
+  body {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #app,
+  #dashboardStage {
+    position: static;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* Override the JS transform-scale approach — let widgets flow naturally */
+  #dashboard {
+    position: static;
+    width: 100% !important;
+    height: auto !important;
+    transform: none !important;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  /* All widgets: stack vertically, full width */
+  .widget {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    box-sizing: border-box;
+    border-radius: 14px;
+    overflow: visible;
+  }
+
+  .widgetFrame {
+    overflow: visible;
+    border-radius: 14px;
+  }
+
+  /* Layout/Edit button — float it in the top-right corner */
+  #layoutWidget {
+    position: fixed !important;
+    top: 10px;
+    right: 10px;
+    width: 130px !important;
+    height: 42px !important;
+    z-index: 99999 !important;
+  }
+
+  /* Order: stations → wind → temp → tideStatus → forecast → tideChart */
+  #stationsWidget  { order: 1; }
+  #windWidget      { order: 2; height: 300px !important; }
+  #tempWidget      { order: 3; height: 100px !important; }
+  #tideStatusWidget{ order: 4; height: 80px !important; }
+  #forecastWidget  { order: 5; height: 220px !important; }
+  #tideChartWidget { order: 6; height: 240px !important; }
+
+  /* Stations bar — stack controls vertically on narrow screens */
+  .stationPanel {
+    padding: 12px 10px 10px 10px;
+  }
+
+  .stationBar,
+  .dateBar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #stationSelect {
+    min-width: 0;
+    width: 100%;
+    font-size: 15px;
+  }
+
+  #tideDateSelect {
+    min-width: 0;
+    font-size: 15px;
+  }
+
+  .dateBtn {
+    font-size: 14px;
+    min-width: 100px;
+    padding: 8px 10px;
+  }
+
+  /* Forecast: cards fill the full widget height, larger touch targets */
+  .forecastWrap {
+    padding: 10px 8px 30px 8px; /* bottom room for hint arrows */
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  .forecast {
+    gap: 8px;
+  }
+
+  .card {
+    padding: 14px 8px;
+    border-radius: 12px;
+    min-width: 0;
+  }
+
+  .card .hour   { font-size: 17px; }
+  .card .tempF  { font-size: 30px; }
+  .card .humidity,
+  .card .tempC  { font-size: 13px; }
+  .card .rain   { font-size: 14px; }
+  .card .windMini,
+  .card .dirMini{ font-size: 13px; }
+
+  /* Swipe hint bar at bottom of forecast */
+  .forecastDragHint {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .forecastArrow {
+    font-size: 16px;
+    color: rgba(125, 186, 220, 0.9);
+    transition: opacity 0.2s;
+  }
+
+  .forecastArrow.faded {
+    opacity: 0.2;
+  }
+
+  .forecastHintLabel {
+    font-size: 11px;
+    color: rgba(125, 186, 220, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Tide chart: taller canvas, touch-draggable */
+  .tideSection {
+    padding: 8px 0 0 0;
+  }
+
+  .tidePanel {
+    border-radius: 10px;
+  }
+
+  #tideChart {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  #tideChart:active {
+    cursor: grabbing;
+  }
+
+  /* Temperature widget */
+  .tempBox {
+    padding: 14px 10px;
+  }
+
+  #tempMain { font-size: 52px; }
+  #tempSub  { font-size: 18px; }
+
+  /* Tide status */
+  .lowTideAlert { font-size: 18px; padding-top: 8px; }
+  .currentTide  { font-size: 20px; }
+
+  /* Wind / compass */
+  .windBox {
+    padding: 12px 8px;
+    gap: 8px;
+  }
+
+  .windReadingLine { font-size: 20px; }
+
+  /* Settings panels — full width on mobile */
+  .widgetSettingsPanel {
+    width: calc(100vw - 24px);
+    right: 0;
+    left: 0;
+    margin: 0 auto;
+    max-height: 70vh;
+    position: fixed;
+    top: 60px;
+    z-index: 99998;
+  }
+}
