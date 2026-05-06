@@ -1765,16 +1765,25 @@ function drawTide(series) {
     ctx.stroke();
   }
 
-  /* Tide curve — draw full series, clipping handles edges */
-  ctx.beginPath();
-  series.forEach((pt, i) => {
-    const x = xForTime(pt.timeMs);
-    const y = yForVal(pt.value);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = "#7be8ff";
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  /* Tide curve — only draw points near/within the visible window.
+     Include one point before startMs and one after endMs so the curve
+     enters/exits the clip region smoothly rather than starting abruptly. */
+  const margin = (endMs - startMs) * 0.15; /* 15% buffer outside window */
+  const visibleSeries = series.filter(pt =>
+    pt.timeMs >= startMs - margin && pt.timeMs <= endMs + margin
+  );
+
+  if (visibleSeries.length > 1) {
+    ctx.beginPath();
+    visibleSeries.forEach((pt, i) => {
+      const x = leftPad + ((pt.timeMs - startMs) / (endMs - startMs)) * chartW;
+      const y = yForVal(pt.value);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = "#7be8ff";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
 
   /* Hour tick labels and ft values — only for points in visible window */
   let lastLabeledHour = null;
