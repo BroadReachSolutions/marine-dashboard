@@ -119,12 +119,20 @@ async function init() {
 
   attachCompassSettingsEvents();
   makeSettingsPanelsDraggable();
-  refreshAll();
 
+  /* Apply mobile overrides BEFORE first data load so layout is correct */
+  if (isMobile()) {
+    applyMobileWidgetOverrides();
+  }
+
+  /* Load location first so weather/tide fetch uses correct coords */
   await loadMarineLocation();
   if (!marineLocationLat || !marineLocationLon) {
-    getLocation();
+    await getLocation();
   }
+
+  /* Now fetch all data — awaited so widgets populate before user sees them */
+  await refreshAll();
 
   setInterval(updateClockAndDate, 1000);
 
@@ -132,11 +140,6 @@ async function init() {
     loadWeather();
     if (tideViewMode === "live") loadTides();
   }, 60000);
-
-  /* apply mobile-only overrides after everything else is set up */
-  if (isMobile()) {
-    applyMobileWidgetOverrides();
-  }
 
   /* re-apply on orientation/resize */
   window.addEventListener("resize", () => {
@@ -599,7 +602,8 @@ function setupWidgetSettingsSystem() {
     if (settingsBtn) {
       settingsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (!layoutEditMode) return;
+        /* On mobile, settings always accessible. On desktop, only in edit mode. */
+        if (!isMobile() && !layoutEditMode) return;
 
         const isOpen = widget.classList.contains("show-settings");
         closeAllSettingsPanels();
@@ -807,6 +811,17 @@ function closeAllSettingsPanels() {
   });
 }
 
+/* Close settings when tapping outside any open panel (mobile) */
+document.addEventListener("touchstart", (e) => {
+  const openWidget = document.querySelector(".widget.show-settings");
+  if (!openWidget) return;
+  const panel = openWidget.querySelector(".widgetSettingsPanel");
+  const btn   = openWidget.querySelector(".widgetSettingsBtn");
+  if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+    closeAllSettingsPanels();
+  }
+}, { passive: true });
+
 function getWidgetSettings(key) {
   if (!widgetSettings[key]) widgetSettings[key] = {};
   return widgetSettings[key];
@@ -1010,54 +1025,91 @@ function attachEvents() {
   const forecastWidget = document.getElementById("forecastWidget");
   if (forecastWidget) {
     if (isMobile()) {
-      /* ---- Mobile: drag left/right to scroll forecast, tap to toggle weekly ---- */
-      let touchStartX      = null;
-      let touchStartHour   = 0;
-      let touchStartDay    = 0;
-      let touchMoved       = false;
-      const DRAG_THRESHOLD = 10; /* px before we commit to a drag */
+      /* ---- Mobile: smooth pixel scroll with momentum + tap to reset ---- */
+      /* forecastScrollPx: continuous pixel offset into the card list */
+      let forecastScrollPx  = 0;
+      let touchStartX       = null;
+      let touchStartScroll  = 0;
+      let touchLastX        = 0;
+      let touchVelocity     = 0;
+      let touchMoved        = false;
+      let momentumRAF       = null;
+      const DRAG_THRESHOLD  = 8;
+
+      function getForecastCardW() {
+        /* card width = widget width / visible cards */
+        return forecastWidget.offsetWidth / getForecastVisibleHours();
+      }
+
+      function getForecastMaxPx() {
+        if (!_lastWeatherData) return 0;
+        if (weatherViewMode === "weekly") {
+          const total = _lastWeatherData.daily.time.length;
+          return Math.max(0, (total - WEEKLY_VISIBLE_DAYS) * getForecastCardW());
+        }
+        return Math.max(0, (WEATHER_HOURS - getForecastVisibleHours()) * getForecastCardW());
+      }
+
+      function applyForecastScroll(px) {
+        forecastScrollPx = Math.max(0, Math.min(px, getForecastMaxPx()));
+        const cardW = getForecastCardW();
+        if (weatherViewMode === "weekly") {
+          weeklyDragOffset   = Math.round(forecastScrollPx / cardW);
+        } else {
+          forecastDragOffset = Math.round(forecastScrollPx / cardW);
+        }
+        renderWeather(null);
+      }
+
+      function startMomentum() {
+        if (momentumRAF) cancelAnimationFrame(momentumRAF);
+        function step() {
+          if (Math.abs(touchVelocity) < 0.5) return;
+          touchVelocity *= 0.88; /* friction */
+          applyForecastScroll(forecastScrollPx - touchVelocity);
+          momentumRAF = requestAnimationFrame(step);
+        }
+        momentumRAF = requestAnimationFrame(step);
+      }
 
       forecastWidget.addEventListener("touchstart", (e) => {
         if (layoutEditMode) return;
-        touchStartX    = e.touches[0].clientX;
-        touchStartHour = forecastDragOffset;
-        touchStartDay  = weeklyDragOffset;
-        touchMoved     = false;
+        if (momentumRAF) { cancelAnimationFrame(momentumRAF); momentumRAF = null; }
+        touchStartX      = e.touches[0].clientX;
+        touchLastX       = touchStartX;
+        touchStartScroll = forecastScrollPx;
+        touchVelocity    = 0;
+        touchMoved       = false;
       }, { passive: true });
 
       forecastWidget.addEventListener("touchmove", (e) => {
         if (touchStartX === null || layoutEditMode) return;
         const dx = e.touches[0].clientX - touchStartX;
+        touchVelocity = touchLastX - e.touches[0].clientX;
+        touchLastX    = e.touches[0].clientX;
         if (Math.abs(dx) > DRAG_THRESHOLD) {
           touchMoved = true;
-          if (weatherViewMode === "weekly") {
-            /* drag weekly cards */
-            const cardW = forecastWidget.offsetWidth / WEEKLY_VISIBLE_DAYS;
-            const delta = -Math.round(dx / cardW);
-            weeklyDragOffset = Math.max(0, Math.min(
-              (_lastWeatherData ? _lastWeatherData.daily.time.length : 7) - WEEKLY_VISIBLE_DAYS,
-              touchStartDay + delta
-            ));
-          } else {
-            /* drag hourly cards */
-            const cardW = forecastWidget.offsetWidth / getForecastVisibleHours();
-            const delta = -Math.round(dx / cardW);
-            forecastDragOffset = Math.max(0, Math.min(
-              WEATHER_HOURS - getForecastVisibleHours(),
-              touchStartHour + delta
-            ));
-          }
-          renderWeather(null);
+          applyForecastScroll(touchStartScroll + dx * -1);
         }
       }, { passive: true });
 
       forecastWidget.addEventListener("touchend", async () => {
         if (!touchMoved && touchStartX !== null) {
-          /* tap — toggle hourly/weekly and reset offsets */
-          forecastDragOffset = 0;
-          weeklyDragOffset   = 0;
-          weatherViewMode    = weatherViewMode === "hourly" ? "weekly" : "hourly";
-          await loadWeather();
+          /* tap: if already at start, toggle mode; otherwise snap back to start */
+          if (forecastScrollPx < 5) {
+            forecastDragOffset = 0;
+            weeklyDragOffset   = 0;
+            weatherViewMode    = weatherViewMode === "hourly" ? "weekly" : "hourly";
+            forecastScrollPx   = 0;
+            await loadWeather();
+          } else {
+            forecastScrollPx = 0;
+            forecastDragOffset = 0;
+            weeklyDragOffset   = 0;
+            renderWeather(null);
+          }
+        } else {
+          startMomentum();
         }
         touchStartX = null;
       });
@@ -1779,9 +1831,10 @@ function renderWeather(data) {
   if (weatherViewMode === "weekly") {
     const visibleDays = isMobile() ? WEEKLY_VISIBLE_DAYS : 7;
     const totalDays   = d.daily.time.length;
-    /* Always start from today — find index where date >= today */
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayIdx = Math.max(0, d.daily.time.findIndex(t => t >= todayStr));
+    /* Always start from today — compare date strings in local time (not UTC) */
+    const now = new Date();
+    const localToday = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    const todayIdx = Math.max(0, d.daily.time.findIndex(t => t >= localToday));
 
     if (isMobile()) {
       weeklyDragOffset = Math.max(0, Math.min(weeklyDragOffset, totalDays - todayIdx - visibleDays));
@@ -2357,8 +2410,8 @@ function getTideChartMetrics(canvas) {
   /* On mobile use tighter padding so the chart fills edge-to-edge */
   const leftPad   = isMobile() ? 4  : 36;
   const rightPad  = isMobile() ? 4  : 20;
-  const topPad    = isMobile() ? 32 : 28; /* room for pill label */
-  const bottomPad = isMobile() ? 22 : 34;
+  const topPad    = isMobile() ? 6  : 28; /* minimal top — pill floats inside chart */
+  const bottomPad = isMobile() ? 20 : 34;
   const chartW = canvas.width - leftPad - rightPad;
   const chartH = canvas.height - topPad - bottomPad;
 

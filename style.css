@@ -1293,9 +1293,24 @@ body.layout-edit .widget.theme-clean {
     pointer-events: none;
   }
 
-  /* Settings button stays accessible in edit mode */
-  body.layout-edit .widgetControls {
+  /* Settings button always visible on mobile */
+  .widgetControls {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Keep it in the top-right corner */
+  .widgetControls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
     z-index: 60 !important;
+  }
+
+  /* Hide the eye/hide button on mobile to keep it clean */
+  .widgetHideBtn {
+    display: none !important;
   }
 
   .widgetFrame {
@@ -1520,8 +1535,12 @@ body.layout-edit .widget.theme-clean {
     right: 16px;
     margin: 0;
     z-index: 99998;
-    touch-action: none;
     box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+    /* Allow scrolling anywhere in the panel, not just the scrollbar */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
   }
 
   /* Show a drag grip at the top of the settings panel */
@@ -1552,3 +1571,131 @@ body.layout-edit .widget.theme-clean {
     outline: 2px solid rgba(100,200,255,0.8) !important;
     z-index: 999;
   }
+
+/* ==========================================================================
+   MOBILE LIGHT THEME — easier to read in daylight
+   ========================================================================== */
+@media (max-width: 767px) {
+
+  body.is-mobile {
+    background: #d6e8f5 !important;
+  }
+
+  html {
+    background: #d6e8f5 !important;
+  }
+
+  /* Widget backgrounds — light frosted card */
+  body.is-mobile .widget {
+    background: rgba(255,255,255,0.82) !important;
+    border: 1px solid rgba(100,160,210,0.3) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10) !important;
+  }
+
+  /* Widget frames */
+  body.is-mobile .widgetFrame {
+    background: transparent !important;
+  }
+
+  /* Header */
+  body.is-mobile #mobileHeader {
+    background: rgba(220,238,252,0.97) !important;
+    border-bottom: 1px solid rgba(100,160,210,0.3) !important;
+  }
+
+  body.is-mobile #mobileHeaderTempVal {
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile #mobileHeaderHumPct {
+    color: #2a6080 !important;
+  }
+
+  body.is-mobile #mobileHeaderHumLabel {
+    color: rgba(42,96,128,0.65) !important;
+  }
+
+  /* Text inside widgets — dark on light */
+  body.is-mobile .windReadingLine,
+  body.is-mobile .windReadingDir,
+  body.is-mobile #windReadings,
+  body.is-mobile #windDir {
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .card {
+    background: rgba(255,255,255,0.75) !important;
+    border: 1px solid rgba(100,160,210,0.25) !important;
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .card .hour,
+  body.is-mobile .card .tempF,
+  body.is-mobile .card .humidity,
+  body.is-mobile .card .rain,
+  body.is-mobile .card .windMini,
+  body.is-mobile .card .dirMini {
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .card .tempF {
+    color: #1a4a6e !important;
+  }
+
+  body.is-mobile .stationLabel,
+  body.is-mobile #stationSelect,
+  body.is-mobile #tideDateSelect {
+    color: #0d2d42 !important;
+    background: rgba(255,255,255,0.8) !important;
+    border-color: rgba(100,160,210,0.4) !important;
+  }
+
+  body.is-mobile .dateBtn {
+    background: rgba(30,100,160,0.15) !important;
+    color: #0d2d42 !important;
+    border-color: rgba(30,100,160,0.3) !important;
+  }
+
+  body.is-mobile #currentTide,
+  body.is-mobile #lowTideAlert {
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile #lowTideAlert {
+    color: #cc3333 !important;
+  }
+
+  /* Settings panel light */
+  body.is-mobile .widgetSettingsPanel {
+    background: rgba(235,248,255,0.98) !important;
+    border-color: rgba(100,160,210,0.4) !important;
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .settingsTitle,
+  body.is-mobile .settingsRow label {
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .settingsRow input,
+  body.is-mobile .settingsRow select {
+    background: rgba(255,255,255,0.9) !important;
+    color: #0d2d42 !important;
+    border-color: rgba(100,160,210,0.35) !important;
+  }
+
+  body.is-mobile .widgetSettingsBtn,
+  body.is-mobile .widgetHideBtn,
+  body.is-mobile .closeSettingsBtn,
+  body.is-mobile .settingsActionBtn {
+    background: rgba(30,100,160,0.12) !important;
+    border-color: rgba(30,100,160,0.3) !important;
+    color: #0d2d42 !important;
+  }
+
+  body.is-mobile .layoutToggle {
+    background: rgba(30,100,160,0.15) !important;
+    color: #0d2d42 !important;
+    border-color: rgba(30,100,160,0.35) !important;
+  }
+}
