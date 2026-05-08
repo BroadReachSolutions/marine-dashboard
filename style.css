@@ -1293,24 +1293,24 @@ body.layout-edit .widget.theme-clean {
     pointer-events: none;
   }
 
-  /* Settings button always visible on mobile */
+  /* Widget controls hidden by default on mobile, shown in edit mode */
   .widgetControls {
+    display: none !important;
+  }
+
+  body.layout-edit .widgetControls {
     display: flex !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-  }
-
-  /* Keep it in the top-right corner */
-  .widgetControls {
     position: absolute;
     top: 6px;
     right: 6px;
     z-index: 60 !important;
   }
 
-  /* Hide the eye/hide button on mobile to keep it clean */
+  /* Eye/hide button visible on mobile */
   .widgetHideBtn {
-    display: none !important;
+    display: inline-flex !important;
   }
 
   .widgetFrame {
@@ -1449,15 +1449,26 @@ body.layout-edit .widget.theme-clean {
     padding: 8px 10px;
   }
 
-  /* Forecast: cards fill the full widget height, larger touch targets */
+  /* Forecast: clip window, inner strip slides via translateX */
   .forecastWrap {
-    padding: 10px 8px 10px 8px;
+    padding: 10px 0;
+    overflow: hidden;
     touch-action: pan-y;
     user-select: none;
   }
 
   .forecast {
-    gap: 8px;
+    gap: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    will-change: transform;
+    transition: transform 0.05s linear;
+  }
+
+  .card {
+    flex: 0 0 calc(100% / 3);
+    box-sizing: border-box;
+    padding: 14px 6px;
   }
 
   .card {
@@ -1488,7 +1499,8 @@ body.layout-edit .widget.theme-clean {
 
   #tideChart {
     cursor: grab;
-    touch-action: none;
+    /* pan-x for horizontal chart drag; pan-y lets the page scroll vertically */
+    touch-action: pan-y;
   }
 
   #tideChart:active {
@@ -1698,4 +1710,60 @@ body.layout-edit .widget.theme-clean {
     color: #0d2d42 !important;
     border-color: rgba(30,100,160,0.35) !important;
   }
+}
+
+/* ==========================================================================
+   MOBILE — SLIGHTLY BRIGHTER DARK THEME for daylight readability
+   ========================================================================== */
+@media (max-width: 767px) {
+
+  body.is-mobile {
+    background: #0f2030 !important;
+  }
+
+  html { background: #0f2030 !important; }
+
+  body.is-mobile .widget {
+    background: rgba(18, 42, 62, 0.95) !important;
+    border: 1px solid rgba(100,185,240,0.28) !important;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.30) !important;
+  }
+
+  body.is-mobile #mobileHeader {
+    background: rgba(12, 30, 46, 0.97) !important;
+    border-bottom: 1px solid rgba(100,185,240,0.22) !important;
+  }
+
+  body.is-mobile #mobileHeaderTempVal  { color: #ffffff !important; }
+  body.is-mobile #mobileHeaderHumPct   { color: #7fd4f8 !important; }
+  body.is-mobile #mobileHeaderHumLabel { color: rgba(127,212,248,0.6) !important; }
+
+  /* Brighter text across all widgets */
+  body.is-mobile .windReadingLine,
+  body.is-mobile #windReadings       { color: #e8f8ff !important; }
+  body.is-mobile .windReadingDir,
+  body.is-mobile #windDir            { color: #a8dcf0 !important; }
+
+  body.is-mobile .card {
+    background: rgba(22, 52, 76, 0.92) !important;
+    border: 1px solid rgba(100,185,240,0.2) !important;
+  }
+
+  body.is-mobile .card .hour         { color: #b8e4f8 !important; }
+  body.is-mobile .card .tempF        { color: #ffffff !important; }
+  body.is-mobile .card .humidity,
+  body.is-mobile .card .rain,
+  body.is-mobile .card .windMini,
+  body.is-mobile .card .dirMini      { color: #9dd8f0 !important; }
+
+  body.is-mobile #currentTide        { color: #b8e4f8 !important; }
+  body.is-mobile #lowTideAlert       { color: #ff8080 !important; }
+
+  body.is-mobile .widgetSettingsPanel {
+    background: rgba(12, 30, 46, 0.98) !important;
+    border-color: rgba(100,185,240,0.3) !important;
+  }
+
+  body.is-mobile .settingsTitle,
+  body.is-mobile .settingsRow label  { color: #c8eeff !important; }
 }

@@ -602,8 +602,7 @@ function setupWidgetSettingsSystem() {
     if (settingsBtn) {
       settingsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        /* On mobile, settings always accessible. On desktop, only in edit mode. */
-        if (!isMobile() && !layoutEditMode) return;
+        if (!layoutEditMode) return;
 
         const isOpen = widget.classList.contains("show-settings");
         closeAllSettingsPanels();
@@ -624,20 +623,38 @@ function setupWidgetSettingsSystem() {
               pHeader._panelDragAttached = true;
               let pdStart = null, pdLeft = 16, pdTop = 68;
 
-              pHeader.addEventListener("touchstart", (ev) => {
+              /* Long-press anywhere in panel to drag it */
+              let panelHoldTimer = null;
+              let panelDragActive = false;
+
+              settingsPanel.addEventListener("touchstart", (ev) => {
                 if (ev.target.closest(".closeSettingsBtn")) return;
-                ev.stopPropagation();
+                if (ev.target.closest("input, select, button")) return;
                 const r = settingsPanel.getBoundingClientRect();
                 pdLeft = r.left; pdTop = r.top;
                 pdStart = { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
-                settingsPanel.style.transition = "none";
+                panelDragActive = false;
+                panelHoldTimer = setTimeout(() => {
+                  panelDragActive = true;
+                  settingsPanel.style.transition = "none";
+                  settingsPanel.style.touchAction = "none";
+                }, 400);
               }, { passive: true });
 
-              pHeader.addEventListener("touchmove", (ev) => {
+              settingsPanel.addEventListener("touchmove", (ev) => {
                 if (!pdStart) return;
-                ev.stopPropagation();
                 const dx = ev.touches[0].clientX - pdStart.x;
                 const dy = ev.touches[0].clientY - pdStart.y;
+                /* cancel hold if moved too much before timer fires */
+                if (!panelDragActive && Math.abs(dy) > 10) {
+                  clearTimeout(panelHoldTimer);
+                  panelHoldTimer = null;
+                  pdStart = null;
+                  return;
+                }
+                if (!panelDragActive) return;
+                ev.preventDefault();
+                ev.stopPropagation();
                 const nLeft = Math.max(0, Math.min(window.innerWidth  - settingsPanel.offsetWidth,  pdLeft + dx));
                 const nTop  = Math.max(0, Math.min(window.innerHeight - 100, pdTop  + dy));
                 settingsPanel.style.left  = `${nLeft}px`;
@@ -645,7 +662,13 @@ function setupWidgetSettingsSystem() {
                 settingsPanel.style.right = "auto";
               }, { passive: false });
 
-              pHeader.addEventListener("touchend", () => { pdStart = null; });
+              settingsPanel.addEventListener("touchend", () => {
+                clearTimeout(panelHoldTimer);
+                panelHoldTimer = null;
+                panelDragActive = false;
+                pdStart = null;
+                settingsPanel.style.touchAction = "";
+              });
             }
           }
         }
@@ -1025,48 +1048,33 @@ function attachEvents() {
   const forecastWidget = document.getElementById("forecastWidget");
   if (forecastWidget) {
     if (isMobile()) {
-      /* ---- Mobile: smooth pixel scroll with momentum + tap to reset ---- */
-      /* forecastScrollPx: continuous pixel offset into the card list */
-      let forecastScrollPx  = 0;
-      let touchStartX       = null;
-      let touchStartScroll  = 0;
-      let touchLastX        = 0;
-      let touchVelocity     = 0;
-      let touchMoved        = false;
-      let momentumRAF       = null;
-      const DRAG_THRESHOLD  = 8;
-
-      function getForecastCardW() {
-        /* card width = widget width / visible cards */
-        return forecastWidget.offsetWidth / getForecastVisibleHours();
-      }
+      /* ---- Mobile: smooth translateX scroll with momentum ---- */
+      let touchStartX      = null;
+      let touchLastX       = 0;
+      let touchStartScroll = 0;
+      let touchVelocity    = 0;
+      let touchMoved       = false;
+      let momentumRAF      = null;
+      const DRAG_THRESHOLD = 6;
 
       function getForecastMaxPx() {
-        if (!_lastWeatherData) return 0;
-        if (weatherViewMode === "weekly") {
-          const total = _lastWeatherData.daily.time.length;
-          return Math.max(0, (total - WEEKLY_VISIBLE_DAYS) * getForecastCardW());
-        }
-        return Math.max(0, (WEATHER_HOURS - getForecastVisibleHours()) * getForecastCardW());
+        const wrap = document.getElementById("forecast");
+        if (!wrap || !_lastWeatherData) return 0;
+        /* total strip width minus visible window width */
+        return Math.max(0, wrap.scrollWidth - forecastWidget.offsetWidth);
       }
 
       function applyForecastScroll(px) {
-        forecastScrollPx = Math.max(0, Math.min(px, getForecastMaxPx()));
-        const cardW = getForecastCardW();
-        if (weatherViewMode === "weekly") {
-          weeklyDragOffset   = Math.round(forecastScrollPx / cardW);
-        } else {
-          forecastDragOffset = Math.round(forecastScrollPx / cardW);
-        }
-        renderWeather(null);
+        _forecastScrollPx = Math.max(0, Math.min(px, getForecastMaxPx()));
+        setForecastTranslate(_forecastScrollPx);
       }
 
       function startMomentum() {
         if (momentumRAF) cancelAnimationFrame(momentumRAF);
         function step() {
-          if (Math.abs(touchVelocity) < 0.5) return;
-          touchVelocity *= 0.88; /* friction */
-          applyForecastScroll(forecastScrollPx - touchVelocity);
+          if (Math.abs(touchVelocity) < 0.3) { momentumRAF = null; return; }
+          touchVelocity    *= 0.90;
+          applyForecastScroll(_forecastScrollPx + touchVelocity);
           momentumRAF = requestAnimationFrame(step);
         }
         momentumRAF = requestAnimationFrame(step);
@@ -1077,7 +1085,7 @@ function attachEvents() {
         if (momentumRAF) { cancelAnimationFrame(momentumRAF); momentumRAF = null; }
         touchStartX      = e.touches[0].clientX;
         touchLastX       = touchStartX;
-        touchStartScroll = forecastScrollPx;
+        touchStartScroll = _forecastScrollPx;
         touchVelocity    = 0;
         touchMoved       = false;
       }, { passive: true });
@@ -1085,30 +1093,30 @@ function attachEvents() {
       forecastWidget.addEventListener("touchmove", (e) => {
         if (touchStartX === null || layoutEditMode) return;
         const dx = e.touches[0].clientX - touchStartX;
-        touchVelocity = touchLastX - e.touches[0].clientX;
+        /* track velocity on every move */
+        touchVelocity = (e.touches[0].clientX - touchLastX);
         touchLastX    = e.touches[0].clientX;
         if (Math.abs(dx) > DRAG_THRESHOLD) {
           touchMoved = true;
-          applyForecastScroll(touchStartScroll + dx * -1);
+          applyForecastScroll(touchStartScroll - dx);
         }
       }, { passive: true });
 
       forecastWidget.addEventListener("touchend", async () => {
         if (!touchMoved && touchStartX !== null) {
-          /* tap: if already at start, toggle mode; otherwise snap back to start */
-          if (forecastScrollPx < 5) {
-            forecastDragOffset = 0;
-            weeklyDragOffset   = 0;
-            weatherViewMode    = weatherViewMode === "hourly" ? "weekly" : "hourly";
-            forecastScrollPx   = 0;
+          if (_forecastScrollPx < 5) {
+            /* tap at start — toggle hourly/weekly */
+            _forecastScrollPx = 0;
+            weatherViewMode   = weatherViewMode === "hourly" ? "weekly" : "hourly";
             await loadWeather();
           } else {
-            forecastScrollPx = 0;
-            forecastDragOffset = 0;
-            weeklyDragOffset   = 0;
-            renderWeather(null);
+            /* tap while scrolled — snap back to start */
+            _forecastScrollPx = 0;
+            setForecastTranslate(0);
           }
         } else {
+          /* release with momentum */
+          touchVelocity = -touchVelocity; /* invert: swipe left = scroll right */
           startMomentum();
         }
         touchStartX = null;
@@ -1816,34 +1824,41 @@ let _lastWeatherData = null;
 let weeklyDragOffset = 0;
 const WEEKLY_VISIBLE_DAYS = 3;
 
+/* forecastScrollPx is managed by touch handler; expose so renderWeather can use it */
+let _forecastScrollPx = 0;
+
+function setForecastTranslate(px) {
+  const wrap = document.getElementById("forecast");
+  if (wrap) wrap.style.transform = `translateX(${-px}px)`;
+}
+
 function renderWeather(data) {
   if (data) _lastWeatherData = data;
   const d = _lastWeatherData;
   const wrap = document.getElementById("forecast");
   if (!wrap || !d) return;
 
+  /* Only rebuild the DOM when data actually changes, not on every scroll */
+  const dataKey = weatherViewMode + JSON.stringify(d.daily?.time?.slice(0,3));
+  if (wrap.dataset.renderedKey === dataKey && data === null) {
+    /* Just update the translate — no DOM rebuild needed */
+    setForecastTranslate(_forecastScrollPx);
+    return;
+  }
+  wrap.dataset.renderedKey = dataKey;
   wrap.innerHTML = "";
-
-  /* remove any old swipe hint */
-  const oldHint = wrap.parentElement.querySelector(".forecastDragHint");
-  if (oldHint) oldHint.remove();
+  _forecastScrollPx = 0;
+  wrap.style.transform = "translateX(0)";
 
   if (weatherViewMode === "weekly") {
-    const visibleDays = isMobile() ? WEEKLY_VISIBLE_DAYS : 7;
-    const totalDays   = d.daily.time.length;
-    /* Always start from today — compare date strings in local time (not UTC) */
-    const now = new Date();
-    const localToday = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    const totalDays = d.daily.time.length;
+    const now2 = new Date();
+    const localToday = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,"0")}-${String(now2.getDate()).padStart(2,"0")}`;
     const todayIdx = Math.max(0, d.daily.time.findIndex(t => t >= localToday));
 
-    if (isMobile()) {
-      weeklyDragOffset = Math.max(0, Math.min(weeklyDragOffset, totalDays - todayIdx - visibleDays));
-    } else {
-      weeklyDragOffset = 0;
-    }
-
-    for (let n = 0; n < visibleDays; n++) {
-      const i = todayIdx + weeklyDragOffset + n;
+    /* Render ALL days from today */
+    for (let n = 0; n < totalDays - todayIdx; n++) {
+      const i = todayIdx + n;
       if (i >= totalDays) break;
       const card = document.createElement("div");
       card.className = "card weekly";
@@ -1861,22 +1876,13 @@ function renderWeather(data) {
     return;
   }
 
-  /* --- Hourly --- */
-  const visibleHours = getForecastVisibleHours();
+  /* --- Hourly: render ALL hours, slide with translateX --- */
   const now = new Date();
-  /* find the first hourly slot that is >= current time (not just hour match) */
   let startIndex = d.hourly.time.findIndex(t => new Date(t) >= now);
   if (startIndex < 0) startIndex = 0;
-  /* step back one so current hour is included */
   if (startIndex > 0) startIndex = Math.max(0, startIndex - 1);
 
-  if (isMobile()) {
-    const maxOffset = Math.max(0, WEATHER_HOURS - visibleHours);
-    forecastDragOffset = Math.max(0, Math.min(forecastDragOffset, maxOffset));
-    startIndex += forecastDragOffset;
-  }
-
-  for (let n = 0; n < visibleHours; n++) {
+  for (let n = 0; n < WEATHER_HOURS; n++) {
     const i = startIndex + n;
     if (i >= d.hourly.time.length) break;
     const code     = d.hourly.weathercode[i];
