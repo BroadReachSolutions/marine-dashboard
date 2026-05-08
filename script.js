@@ -834,13 +834,14 @@ function closeAllSettingsPanels() {
   });
 }
 
-/* Close settings when tapping outside any open panel (mobile) */
+/* Close + save settings when tapping outside any open panel (mobile) */
 document.addEventListener("touchstart", (e) => {
   const openWidget = document.querySelector(".widget.show-settings");
   if (!openWidget) return;
   const panel = openWidget.querySelector(".widgetSettingsPanel");
   const btn   = openWidget.querySelector(".widgetSettingsBtn");
   if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+    saveAllSettings();
     closeAllSettingsPanels();
   }
 }, { passive: true });
@@ -1322,10 +1323,11 @@ async function loadWeather() {
 }
 
 function renderCurrentConditions(data) {
-  const now = new Date();
-  let idx = data.hourly.time.findIndex(t => new Date(t) >= now);
+  const now2 = new Date();
+  const padZ2 = n => String(n).padStart(2, "0");
+  const localNowStr2 = `${now2.getFullYear()}-${padZ2(now2.getMonth()+1)}-${padZ2(now2.getDate())}T${padZ2(now2.getHours())}`;
+  let idx = data.hourly.time.findIndex(t => t >= localNowStr2);
   if (idx < 0) idx = 0;
-  if (idx > 0) idx = idx - 1;
   const i = idx;
 
   const temp = Math.round(data.hourly.temperature_2m[i]);
@@ -1876,11 +1878,14 @@ function renderWeather(data) {
     return;
   }
 
-  /* --- Hourly: render ALL hours, slide with translateX --- */
+  /* --- Hourly: render ALL hours from current hour forward --- */
   const now = new Date();
-  let startIndex = d.hourly.time.findIndex(t => new Date(t) >= now);
+  /* Build a local datetime string to compare (avoids UTC offset issues) */
+  const padZ = n => String(n).padStart(2, "0");
+  const localNowStr = `${now.getFullYear()}-${padZ(now.getMonth()+1)}-${padZ(now.getDate())}T${padZ(now.getHours())}`;
+  /* Find first slot whose time string starts with today or later at this hour */
+  let startIndex = d.hourly.time.findIndex(t => t >= localNowStr);
   if (startIndex < 0) startIndex = 0;
-  if (startIndex > 0) startIndex = Math.max(0, startIndex - 1);
 
   for (let n = 0; n < WEATHER_HOURS; n++) {
     const i = startIndex + n;
