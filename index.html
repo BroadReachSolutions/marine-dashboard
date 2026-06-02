@@ -219,7 +219,13 @@
                   <option value="none">No map</option>
                   <option value="compass">Inside compass only</option>
                   <option value="widget">Fill entire widget</option>
+                  <option value="radar">Weather Radar</option>
                 </select>
+              </div>
+              <div class="settingsRow" id="radarSpeedRow" style="display:none;">
+                <label>Radar Speed</label>
+                <input type="range" id="radarSpeed" min="1" max="10" value="5" style="width:100%;" />
+                <span id="radarSpeedLabel" style="font-size:11px;color:#aac;">5</span>
               </div>
               <div class="settingsRow">
                 <label>Cardinal Distance</label>
