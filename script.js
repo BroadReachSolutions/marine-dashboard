@@ -1832,31 +1832,32 @@ function makeSettingsPanelsDraggable() {
    WEATHER RADAR  (RainViewer API — free, no key required)
    ========================================================================== */
 
-/* ---- Radar helpers ---- */
-
 function latLonToTile(lat, lon, zoom) {
   const n = Math.pow(2, zoom);
   const x = Math.floor((lon + 180) / 360 * n);
-  const latR = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n);
+  const r = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(r) + 1/Math.cos(r)) / Math.PI) / 2 * n);
   return { x, y };
 }
 
-/* Tile draw params — pixel offset of lat/lon within the centre tile */
-function getTileDrawParams(lat, lon, zoom, canvasW, canvasH) {
-  const n      = Math.pow(2, zoom);
-  const exactX = (lon + 180) / 360 * n;
-  const latR   = lat * Math.PI / 180;
-  const exactY = (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n;
-  const { x: tileX, y: tileY } = latLonToTile(lat, lon, zoom);
-  /* how many canvas pixels per tile */
-  const tileSize = Math.max(canvasW, canvasH);
-  const offX = (exactX - tileX - 0.5) * tileSize;
-  const offY = (exactY - tileY - 0.5) * tileSize;
-  return { tileX, tileY, tileSize, offX, offY };
+/* How many canvas pixels wide each 256px tile should appear at this zoom
+   so that the canvas covers the right geographic area */
+function tilePixelSize(zoom, canvasW, canvasH) {
+  /* At zoom level Z, the world is 256*2^Z pixels wide in web mercator.
+     We want ~3 tiles to fill the canvas width. */
+  return Math.max(canvasW, canvasH) / 3;
 }
 
-/* Load a tile image, returning cached copy if available */
+/* Sub-pixel offset of our exact lat/lon within its centre tile */
+function tileOffset(lat, lon, zoom, px) {
+  const n = Math.pow(2, zoom);
+  const r = lat * Math.PI / 180;
+  const exactX = (lon + 180) / 360 * n;
+  const exactY = (1 - Math.log(Math.tan(r) + 1/Math.cos(r)) / Math.PI) / 2 * n;
+  const { x, y } = latLonToTile(lat, lon, zoom);
+  return { ox: (exactX - x - 0.5) * px, oy: (exactY - y - 0.5) * px };
+}
+
 function getTileImg(url) {
   if (!_radarImgCache[url]) {
     const img = new Image();
@@ -1867,139 +1868,108 @@ function getTileImg(url) {
   return _radarImgCache[url];
 }
 
-/* Draw satellite base map tiles for radar background.
-   Uses img.onload callbacks — safe since canvas is not cleared on each frame. */
-function _drawRadarBaseTiles(canvas, W, H) {
+/* Draw one radar frame onto the canvas — called by animation tick */
+function drawRadarFrame() {
+  const canvas = document.getElementById("compassMapCanvas");
+  if (!canvas || !radarFrames.length) return;
+
+  const W    = canvas.width;
+  const H    = canvas.height;
   const lat  = marineLocationLat ?? userLat;
   const lon  = marineLocationLon ?? userLon;
-  if (!lat || !lon) return;
+  const zoom = 4; /* state-level view */
+  const path = radarFrames[radarFrameIdx % radarFrames.length];
 
-  const zoom = Math.min(compassZoom, 6); /* satellite base at zoom 6 for context */
-  const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
+  const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
+  const px = tilePixelSize(zoom, W, H);
+  const { ox, oy } = tileOffset(lat, lon, zoom, px);
+
   const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(0, 0, W, H, 12);
-  ctx.clip();
+  /* Dark ocean background */
+  ctx.fillStyle = "#102030";
+  ctx.fillRect(0, 0, W, H);
 
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dy = -2; dy <= 2; dy++) {
-      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY+dy}/${tileX+dx}`;
+  /* --- Draw OpenStreetMap base tiles (shows land/water outlines) --- */
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const url = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
       const img = getTileImg(url);
-      const drawX = W/2 - offX + dx * tileSize - tileSize/2;
-      const drawY = H/2 - offY + dy * tileSize - tileSize/2;
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
       if (img.complete && img.naturalWidth > 0) {
-        ctx.globalAlpha = 1;
-        ctx.drawImage(img, drawX, drawY, tileSize, tileSize);
-      } else {
-        img.onload = () => {
-          /* Don't redraw if we've already moved to a different frame */
-          if (canvas.width !== W || canvas.height !== H) return;
-          const c2 = canvas.getContext("2d");
-          c2.save();
-          c2.beginPath();
-          c2.roundRect(0, 0, W, H, 12);
-          c2.clip();
-          c2.globalAlpha = 1;
-          c2.drawImage(img, drawX, drawY, tileSize, tileSize);
-          c2.restore();
-          /* re-composite radar overlay on top after base tile loads */
-          if (compassMapMode === "radar" && radarFrames.length) {
-            _drawRadarOverlay(canvas, W, H, radarFrameIdx);
-          }
-        };
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(img, drawX, drawY, px, px);
+        ctx.restore();
       }
     }
   }
-  ctx.restore();
-}
 
-/* Draw just the radar overlay tiles onto an already-painted canvas */
-function _drawRadarOverlay(canvas, W, H, frameIdx) {
-  if (!radarFrames.length) return;
-  const path = radarFrames[frameIdx % radarFrames.length];
-  const lat  = marineLocationLat ?? userLat;
-  const lon  = marineLocationLon ?? userLon;
-  if (!lat || !lon) return;
-
-  const zoom = Math.min(compassZoom, 4); /* zoom 4 = state level view */
-  const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
-  const ctx  = canvas.getContext("2d");
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(0, 0, W, H, 12);
-  ctx.clip();
-
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dy = -2; dy <= 2; dy++) {
-      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tileX+dx}/${tileY+dy}/4/1_1.png`;
+  /* --- Draw radar overlay tiles --- */
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
       const img = getTileImg(url);
-      const drawX = W/2 - offX + dx * tileSize - tileSize/2;
-      const drawY = H/2 - offY + dy * tileSize - tileSize/2;
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
       if (img.complete && img.naturalWidth > 0) {
-        ctx.globalAlpha = 0.75;
-        ctx.drawImage(img, drawX, drawY, tileSize, tileSize);
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(img, drawX, drawY, px, px);
+        ctx.restore();
       }
     }
   }
+
+  /* Crosshair at centre (our location) */
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,60,60,0.95)";
+  ctx.lineWidth = 2;
+  ctx.shadowColor = "rgba(255,60,60,0.6)";
+  ctx.shadowBlur  = 4;
+  ctx.beginPath(); ctx.moveTo(W/2-12, H/2); ctx.lineTo(W/2+12, H/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W/2, H/2-12); ctx.lineTo(W/2, H/2+12); ctx.stroke();
   ctx.restore();
 
-  /* Timestamp pill */
-  const match = path.match(/(\d{10,})/);
-  if (match) {
-    const lbl = new Date(parseInt(match[1]) * 1000)
-      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+  /* Timestamp */
+  const m = path.match(/(\d{10,})/);
+  if (m) {
+    const lbl = new Date(parseInt(m[1])*1000)
+      .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.60)";
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
     ctx.beginPath();
-    ctx.roundRect(8, H - 26, 76, 20, 5);
+    if (ctx.roundRect) ctx.roundRect(8, H-28, 80, 22, 5);
+    else ctx.rect(8, H-28, 80, 22);
     ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 11px Arial";
+    ctx.font = "bold 12px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(lbl, 14, H - 11);
+    ctx.fillText(lbl, 14, H-11);
     ctx.restore();
   }
-
-  /* Centre crosshair */
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,70,70,0.9)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(W/2-10, H/2); ctx.lineTo(W/2+10, H/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W/2, H/2-10); ctx.lineTo(W/2, H/2+10); ctx.stroke();
-  ctx.restore();
-}
-
-/* Full composite — base + overlay. Called each animation tick. */
-function _drawRadarComposite(canvas, W, H, frameIdx) {
-  const ctx = canvas.getContext("2d");
-  /* Clear and redraw base synchronously from cache */
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "#0d2136";
-  ctx.fillRect(0, 0, W, H);
-  _drawRadarBaseTiles(canvas, W, H);
-  _drawRadarOverlay(canvas, W, H, frameIdx);
 }
 
 async function fetchRadarFrames() {
   try {
     const res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
     const data = await res.json();
-    const past    = (data.radar?.past    || []).map(f => f.path);
-    const nowcast = (data.radar?.nowcast || []).map(f => f.path);
-    radarFrames   = [...past, ...nowcast];
+    radarFrames = [
+      ...(data.radar?.past    || []).map(f => f.path),
+      ...(data.radar?.nowcast || []).map(f => f.path)
+    ];
     radarFrameIdx = 0;
-    /* Preload all radar tiles at the right zoom */
-    const lat  = marineLocationLat ?? userLat;
-    const lon  = marineLocationLon ?? userLon;
-    const zoom = Math.min(compassZoom, 4);
-    const { tileX, tileY } = latLonToTile(lat, lon, zoom) |0; /* no-op, just for clarity */
+    /* Preload tiles */
+    const lat = marineLocationLat ?? userLat;
+    const lon = marineLocationLon ?? userLon;
+    const zoom = 4;
     const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
     radarFrames.forEach(path => {
-      for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) {
         getTileImg(`https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`);
+        getTileImg(`https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`);
       }
     });
   } catch (e) {
@@ -2014,11 +1984,7 @@ function startRadarAnimation() {
   const interval = Math.max(100, Math.round(1100 - radarSpeed * 100));
   radarAnimTimer = setInterval(() => {
     radarFrameIdx = (radarFrameIdx + 1) % radarFrames.length;
-    const canvas = document.getElementById("compassMapCanvas");
-    if (canvas && compassMapMode === "radar") {
-      const W = canvas.width, H = canvas.height;
-      _drawRadarComposite(canvas, W, H, radarFrameIdx);
-    }
+    if (compassMapMode === "radar") drawRadarFrame();
   }, interval);
 }
 
@@ -2841,68 +2807,64 @@ function updateCompassMap() {
   const canvas = document.getElementById("compassMapCanvas");
   if (!canvas) return;
 
-  /* Stop satellite-mode animation if switching */
   if (compassMapMode !== "radar") stopRadarAnimation();
 
   if (compassMapMode === "none") {
     canvas.style.display = "none";
+    /* Show compass content again */
+    const windBox = document.querySelector("#windWidget .windBox");
+    if (windBox) windBox.style.display = "";
     return;
   }
 
-  /* ---- RADAR MODE — fills entire widget, uses offscreen base canvas ---- */
+  /* ---- RADAR MODE ---- */
   if (compassMapMode === "radar") {
+    /* Hide the compass/wind content, show only the radar canvas */
+    const windBox = document.querySelector("#windWidget .windBox");
+    if (windBox) windBox.style.display = "none";
+
     const widgetFrame = document.querySelector("#windWidget .widgetFrame");
     if (!widgetFrame) return;
 
-    /* Move canvas to fill the whole widget frame */
     if (canvas.parentElement !== widgetFrame) {
       widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
     }
+
     const W = widgetFrame.offsetWidth  || 300;
     const H = widgetFrame.offsetHeight || 300;
 
-    /* Only resize/redraw base map when dimensions change */
-    const sizeChanged = canvas.width !== W || canvas.height !== H;
-    if (sizeChanged) {
-      canvas.width  = W;
-      canvas.height = H;
-      canvas.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;opacity:1;z-index:0;`;
-    }
+    canvas.width  = W;
+    canvas.height = H;
+    canvas.style.cssText = `display:block;position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;z-index:5;`;
 
     const ctx = canvas.getContext("2d");
-
-    /* On first load or size change: draw dark background + queue satellite tiles */
-    if (sizeChanged || !canvas._basePainted) {
-      ctx.fillStyle = "#0d2136";
-      ctx.fillRect(0, 0, W, H);
-      /* Draw satellite base map tiles (async) */
-      _drawRadarBaseTiles(canvas, W, H);
-      canvas._basePainted = true;
-    }
+    ctx.fillStyle = "#0d2136";
+    ctx.fillRect(0, 0, W, H);
 
     if (!radarFrames.length) {
-      /* Show loading message — fetch frames, then start */
-      ctx.fillStyle = "rgba(150,200,255,0.55)";
-      ctx.font = "bold 14px Arial";
+      ctx.fillStyle = "rgba(150,220,255,0.8)";
+      ctx.font = "bold 15px Arial";
       ctx.textAlign = "center";
       ctx.fillText("Loading radar...", W/2, H/2);
-      if (!canvas._radarFetching && (marineLocationLat || userLat)) {
+      if (!canvas._radarFetching) {
         canvas._radarFetching = true;
         fetchRadarFrames().then(() => {
           canvas._radarFetching = false;
-          canvas._basePainted = false; /* force base redraw */
           startRadarAnimation();
+          drawRadarFrame();
         });
       }
       return;
     }
 
-    /* Composite: redraw base then overlay one radar frame */
-    _drawRadarComposite(canvas, W, H, radarFrameIdx);
-
+    drawRadarFrame();
     if (!radarAnimTimer) startRadarAnimation();
     return;
   }
+
+  /* Show compass content for non-radar modes */
+  const windBox = document.querySelector("#windWidget .windBox");
+  if (windBox) windBox.style.display = "";
 
   if (!marineLocationLat || !marineLocationLon) return;
   canvas.style.display = "block";
@@ -3001,31 +2963,32 @@ function drawMapTiles(canvas, w, h) {
    WEATHER RADAR  (RainViewer API — free, no key required)
    ========================================================================== */
 
-/* ---- Radar helpers ---- */
-
 function latLonToTile(lat, lon, zoom) {
   const n = Math.pow(2, zoom);
   const x = Math.floor((lon + 180) / 360 * n);
-  const latR = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n);
+  const r = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(r) + 1/Math.cos(r)) / Math.PI) / 2 * n);
   return { x, y };
 }
 
-/* Tile draw params — pixel offset of lat/lon within the centre tile */
-function getTileDrawParams(lat, lon, zoom, canvasW, canvasH) {
-  const n      = Math.pow(2, zoom);
-  const exactX = (lon + 180) / 360 * n;
-  const latR   = lat * Math.PI / 180;
-  const exactY = (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n;
-  const { x: tileX, y: tileY } = latLonToTile(lat, lon, zoom);
-  /* how many canvas pixels per tile */
-  const tileSize = Math.max(canvasW, canvasH);
-  const offX = (exactX - tileX - 0.5) * tileSize;
-  const offY = (exactY - tileY - 0.5) * tileSize;
-  return { tileX, tileY, tileSize, offX, offY };
+/* How many canvas pixels wide each 256px tile should appear at this zoom
+   so that the canvas covers the right geographic area */
+function tilePixelSize(zoom, canvasW, canvasH) {
+  /* At zoom level Z, the world is 256*2^Z pixels wide in web mercator.
+     We want ~3 tiles to fill the canvas width. */
+  return Math.max(canvasW, canvasH) / 3;
 }
 
-/* Load a tile image, returning cached copy if available */
+/* Sub-pixel offset of our exact lat/lon within its centre tile */
+function tileOffset(lat, lon, zoom, px) {
+  const n = Math.pow(2, zoom);
+  const r = lat * Math.PI / 180;
+  const exactX = (lon + 180) / 360 * n;
+  const exactY = (1 - Math.log(Math.tan(r) + 1/Math.cos(r)) / Math.PI) / 2 * n;
+  const { x, y } = latLonToTile(lat, lon, zoom);
+  return { ox: (exactX - x - 0.5) * px, oy: (exactY - y - 0.5) * px };
+}
+
 function getTileImg(url) {
   if (!_radarImgCache[url]) {
     const img = new Image();
@@ -3036,139 +2999,108 @@ function getTileImg(url) {
   return _radarImgCache[url];
 }
 
-/* Draw satellite base map tiles for radar background.
-   Uses img.onload callbacks — safe since canvas is not cleared on each frame. */
-function _drawRadarBaseTiles(canvas, W, H) {
+/* Draw one radar frame onto the canvas — called by animation tick */
+function drawRadarFrame() {
+  const canvas = document.getElementById("compassMapCanvas");
+  if (!canvas || !radarFrames.length) return;
+
+  const W    = canvas.width;
+  const H    = canvas.height;
   const lat  = marineLocationLat ?? userLat;
   const lon  = marineLocationLon ?? userLon;
-  if (!lat || !lon) return;
+  const zoom = 4; /* state-level view */
+  const path = radarFrames[radarFrameIdx % radarFrames.length];
 
-  const zoom = Math.min(compassZoom, 6); /* satellite base at zoom 6 for context */
-  const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
+  const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
+  const px = tilePixelSize(zoom, W, H);
+  const { ox, oy } = tileOffset(lat, lon, zoom, px);
+
   const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, W, H);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(0, 0, W, H, 12);
-  ctx.clip();
+  /* Dark ocean background */
+  ctx.fillStyle = "#102030";
+  ctx.fillRect(0, 0, W, H);
 
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dy = -2; dy <= 2; dy++) {
-      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY+dy}/${tileX+dx}`;
+  /* --- Draw OpenStreetMap base tiles (shows land/water outlines) --- */
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const url = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
       const img = getTileImg(url);
-      const drawX = W/2 - offX + dx * tileSize - tileSize/2;
-      const drawY = H/2 - offY + dy * tileSize - tileSize/2;
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
       if (img.complete && img.naturalWidth > 0) {
-        ctx.globalAlpha = 1;
-        ctx.drawImage(img, drawX, drawY, tileSize, tileSize);
-      } else {
-        img.onload = () => {
-          /* Don't redraw if we've already moved to a different frame */
-          if (canvas.width !== W || canvas.height !== H) return;
-          const c2 = canvas.getContext("2d");
-          c2.save();
-          c2.beginPath();
-          c2.roundRect(0, 0, W, H, 12);
-          c2.clip();
-          c2.globalAlpha = 1;
-          c2.drawImage(img, drawX, drawY, tileSize, tileSize);
-          c2.restore();
-          /* re-composite radar overlay on top after base tile loads */
-          if (compassMapMode === "radar" && radarFrames.length) {
-            _drawRadarOverlay(canvas, W, H, radarFrameIdx);
-          }
-        };
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(img, drawX, drawY, px, px);
+        ctx.restore();
       }
     }
   }
-  ctx.restore();
-}
 
-/* Draw just the radar overlay tiles onto an already-painted canvas */
-function _drawRadarOverlay(canvas, W, H, frameIdx) {
-  if (!radarFrames.length) return;
-  const path = radarFrames[frameIdx % radarFrames.length];
-  const lat  = marineLocationLat ?? userLat;
-  const lon  = marineLocationLon ?? userLon;
-  if (!lat || !lon) return;
-
-  const zoom = Math.min(compassZoom, 4); /* zoom 4 = state level view */
-  const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
-  const ctx  = canvas.getContext("2d");
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(0, 0, W, H, 12);
-  ctx.clip();
-
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dy = -2; dy <= 2; dy++) {
-      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tileX+dx}/${tileY+dy}/4/1_1.png`;
+  /* --- Draw radar overlay tiles --- */
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
       const img = getTileImg(url);
-      const drawX = W/2 - offX + dx * tileSize - tileSize/2;
-      const drawY = H/2 - offY + dy * tileSize - tileSize/2;
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
       if (img.complete && img.naturalWidth > 0) {
-        ctx.globalAlpha = 0.75;
-        ctx.drawImage(img, drawX, drawY, tileSize, tileSize);
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(img, drawX, drawY, px, px);
+        ctx.restore();
       }
     }
   }
+
+  /* Crosshair at centre (our location) */
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,60,60,0.95)";
+  ctx.lineWidth = 2;
+  ctx.shadowColor = "rgba(255,60,60,0.6)";
+  ctx.shadowBlur  = 4;
+  ctx.beginPath(); ctx.moveTo(W/2-12, H/2); ctx.lineTo(W/2+12, H/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W/2, H/2-12); ctx.lineTo(W/2, H/2+12); ctx.stroke();
   ctx.restore();
 
-  /* Timestamp pill */
-  const match = path.match(/(\d{10,})/);
-  if (match) {
-    const lbl = new Date(parseInt(match[1]) * 1000)
-      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+  /* Timestamp */
+  const m = path.match(/(\d{10,})/);
+  if (m) {
+    const lbl = new Date(parseInt(m[1])*1000)
+      .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.60)";
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
     ctx.beginPath();
-    ctx.roundRect(8, H - 26, 76, 20, 5);
+    if (ctx.roundRect) ctx.roundRect(8, H-28, 80, 22, 5);
+    else ctx.rect(8, H-28, 80, 22);
     ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 11px Arial";
+    ctx.font = "bold 12px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(lbl, 14, H - 11);
+    ctx.fillText(lbl, 14, H-11);
     ctx.restore();
   }
-
-  /* Centre crosshair */
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,70,70,0.9)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(W/2-10, H/2); ctx.lineTo(W/2+10, H/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W/2, H/2-10); ctx.lineTo(W/2, H/2+10); ctx.stroke();
-  ctx.restore();
-}
-
-/* Full composite — base + overlay. Called each animation tick. */
-function _drawRadarComposite(canvas, W, H, frameIdx) {
-  const ctx = canvas.getContext("2d");
-  /* Clear and redraw base synchronously from cache */
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "#0d2136";
-  ctx.fillRect(0, 0, W, H);
-  _drawRadarBaseTiles(canvas, W, H);
-  _drawRadarOverlay(canvas, W, H, frameIdx);
 }
 
 async function fetchRadarFrames() {
   try {
     const res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
     const data = await res.json();
-    const past    = (data.radar?.past    || []).map(f => f.path);
-    const nowcast = (data.radar?.nowcast || []).map(f => f.path);
-    radarFrames   = [...past, ...nowcast];
+    radarFrames = [
+      ...(data.radar?.past    || []).map(f => f.path),
+      ...(data.radar?.nowcast || []).map(f => f.path)
+    ];
     radarFrameIdx = 0;
-    /* Preload all radar tiles at the right zoom */
-    const lat  = marineLocationLat ?? userLat;
-    const lon  = marineLocationLon ?? userLon;
-    const zoom = Math.min(compassZoom, 4);
-    const { tileX, tileY } = latLonToTile(lat, lon, zoom) |0; /* no-op, just for clarity */
+    /* Preload tiles */
+    const lat = marineLocationLat ?? userLat;
+    const lon = marineLocationLon ?? userLon;
+    const zoom = 4;
     const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
     radarFrames.forEach(path => {
-      for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) {
         getTileImg(`https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`);
+        getTileImg(`https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`);
       }
     });
   } catch (e) {
@@ -3183,11 +3115,7 @@ function startRadarAnimation() {
   const interval = Math.max(100, Math.round(1100 - radarSpeed * 100));
   radarAnimTimer = setInterval(() => {
     radarFrameIdx = (radarFrameIdx + 1) % radarFrames.length;
-    const canvas = document.getElementById("compassMapCanvas");
-    if (canvas && compassMapMode === "radar") {
-      const W = canvas.width, H = canvas.height;
-      _drawRadarComposite(canvas, W, H, radarFrameIdx);
-    }
+    if (compassMapMode === "radar") drawRadarFrame();
   }, interval);
 }
 
