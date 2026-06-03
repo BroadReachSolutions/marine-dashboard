@@ -1874,7 +1874,7 @@ function _drawRadarBaseTiles(canvas, W, H) {
   const lon  = marineLocationLon ?? userLon;
   if (!lat || !lon) return;
 
-  const zoom = Math.min(compassZoom, 10);
+  const zoom = Math.min(compassZoom, 6); /* satellite base at zoom 6 for context */
   const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
   const ctx = canvas.getContext("2d");
 
@@ -1923,7 +1923,7 @@ function _drawRadarOverlay(canvas, W, H, frameIdx) {
   const lon  = marineLocationLon ?? userLon;
   if (!lat || !lon) return;
 
-  const zoom = Math.min(compassZoom, 6); /* RainViewer works best at zoom 3-6 */
+  const zoom = Math.min(compassZoom, 4); /* zoom 4 = state level view */
   const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
   const ctx  = canvas.getContext("2d");
 
@@ -1994,7 +1994,7 @@ async function fetchRadarFrames() {
     /* Preload all radar tiles at the right zoom */
     const lat  = marineLocationLat ?? userLat;
     const lon  = marineLocationLon ?? userLon;
-    const zoom = Math.min(compassZoom, 6);
+    const zoom = Math.min(compassZoom, 4);
     const { tileX, tileY } = latLonToTile(lat, lon, zoom) |0; /* no-op, just for clarity */
     const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
     radarFrames.forEach(path => {
@@ -3043,7 +3043,7 @@ function _drawRadarBaseTiles(canvas, W, H) {
   const lon  = marineLocationLon ?? userLon;
   if (!lat || !lon) return;
 
-  const zoom = Math.min(compassZoom, 10);
+  const zoom = Math.min(compassZoom, 6); /* satellite base at zoom 6 for context */
   const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
   const ctx = canvas.getContext("2d");
 
@@ -3092,7 +3092,7 @@ function _drawRadarOverlay(canvas, W, H, frameIdx) {
   const lon  = marineLocationLon ?? userLon;
   if (!lat || !lon) return;
 
-  const zoom = Math.min(compassZoom, 6); /* RainViewer works best at zoom 3-6 */
+  const zoom = Math.min(compassZoom, 4); /* zoom 4 = state level view */
   const { tileX, tileY, tileSize, offX, offY } = getTileDrawParams(lat, lon, zoom, W, H);
   const ctx  = canvas.getContext("2d");
 
@@ -3163,7 +3163,7 @@ async function fetchRadarFrames() {
     /* Preload all radar tiles at the right zoom */
     const lat  = marineLocationLat ?? userLat;
     const lon  = marineLocationLon ?? userLon;
-    const zoom = Math.min(compassZoom, 6);
+    const zoom = Math.min(compassZoom, 4);
     const { tileX, tileY } = latLonToTile(lat, lon, zoom) |0; /* no-op, just for clarity */
     const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
     radarFrames.forEach(path => {
