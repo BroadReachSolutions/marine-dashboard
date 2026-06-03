@@ -2650,54 +2650,42 @@ function updateCompassMap() {
 
   if (compassMapMode !== "radar") stopRadarAnimation();
 
-  /* ── RADAR MODE ── */
+  /* ── RADAR MODE — use same canvas + placement as "widget" satellite mode ── */
   if (compassMapMode === "radar") {
-    /* Hide compass content */
-    if (windBox)  windBox.style.display  = "none";
-    canvas.style.display = "none";
+    if (windBox) windBox.style.display = "";
+    if (radarCv) radarCv.style.display = "none";
 
-    if (!radarCv || !widgetEl) return;
+    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
+    if (!widgetFrame) return;
+    if (canvas.parentElement !== widgetFrame) widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
 
-    /* Size canvas to exactly fill the widget */
-    const W = widgetEl.offsetWidth;
-    const H = widgetEl.offsetHeight;
-    if (W === 0 || H === 0) {
-      /* Widget not laid out yet — retry after a tick */
-      setTimeout(updateCompassMap, 50);
-      return;
-    }
+    const w = widgetFrame.offsetWidth;
+    const h = widgetFrame.offsetHeight;
+    if (!w || !h) { setTimeout(updateCompassMap, 50); return; }
 
-    radarCv.width  = W;
-    radarCv.height = H;
-    radarCv.style.cssText = [
-      "display:block",
-      "position:absolute",
-      "top:0", "left:0",
-      "width:" + W + "px",
-      "height:" + H + "px",
-      "z-index:20",
-      "border-radius:12px"
-    ].join(";");
+    canvas.width  = w;
+    canvas.height = h;
+    canvas.style.cssText = "display:block;position:absolute;top:0;left:0;width:" + w + "px;height:" + h + "px;border-radius:12px;opacity:1;z-index:5;";
 
-    /* Show loading state */
-    const ctx = radarCv.getContext("2d");
+    /* Show loading text */
+    const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#0d1f2d";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = "#7dd8f8";
     ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Loading radar...", W / 2, H / 2);
+    ctx.fillText("Loading radar...", w / 2, h / 2);
 
     if (!radarFrames.length) {
       fetchRadarFrames().then(() => {
-        drawRadarFrame();
-        startRadarAnimation();
+        drawRadarFrame(canvas, w, h);
+        startRadarAnimation(canvas);
       });
       return;
     }
 
-    drawRadarFrame();
-    if (!radarAnimTimer) startRadarAnimation();
+    drawRadarFrame(canvas, w, h);
+    if (!radarAnimTimer) startRadarAnimation(canvas);
     return;
   }
 
@@ -2883,138 +2871,129 @@ function hslToRgb(h, s, l) {
     b: Math.round(b * 255)
   };
 }
+
 /* ==========================================================================
-   WEATHER RADAR  (RainViewer — free, no API key needed)
+   WEATHER RADAR  (RainViewer — same tile math as satellite drawMapTiles)
    ========================================================================== */
 
-function latLonToTile(lat, lon, zoom) {
-  const n = Math.pow(2, zoom);
-  const x = Math.floor((lon + 180) / 360 * n);
-  const r = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
-  return { x, y };
-}
+const _radarCache = {};
 
-function getTileImg(url) {
-  if (!_radarImgCache[url]) {
-    const img = new Image();
+function _getRadarImg(url) {
+  if (!_radarCache[url]) {
+    var img = new Image();
     img.crossOrigin = "anonymous";
     img.src = url;
-    _radarImgCache[url] = img;
+    _radarCache[url] = img;
   }
-  return _radarImgCache[url];
+  return _radarCache[url];
 }
 
-function drawRadarFrame() {
-  if (compassMapMode !== "radar") return;
-  const cv = document.getElementById("radarCanvas");
-  if (!cv || !radarFrames.length) return;
+/* Draw one radar frame — uses identical tile math to drawMapTiles */
+function drawRadarFrame(canvas, w, h) {
+  if (!canvas) canvas = document.getElementById("compassMapCanvas");
+  if (!canvas) return;
+  if (!w) w = canvas.width;
+  if (!h) h = canvas.height;
+  if (!w || !h || !radarFrames.length) return;
 
-  const W = cv.width;
-  const H = cv.height;
-  if (!W || !H) return;
+  var lat = marineLocationLat != null ? marineLocationLat : userLat;
+  var lon = marineLocationLon != null ? marineLocationLon : userLon;
+  if (!lat || !lon) return;
 
-  const lat  = marineLocationLat != null ? marineLocationLat : userLat;
-  const lon  = marineLocationLon != null ? marineLocationLon : userLon;
-  const zoom = 4;
-  const path = radarFrames[radarFrameIdx % radarFrames.length];
-  const ctx  = cv.getContext("2d");
+  var zoom = 6; /* same zoom as compassZoom default — state+ level */
+  var path = radarFrames[radarFrameIdx % radarFrames.length];
+  var ctx  = canvas.getContext("2d");
 
-  const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
+  /* Identical math to drawMapTiles */
+  var n      = Math.pow(2, zoom);
+  var tileX  = Math.floor((lon + 180) / 360 * n);
+  var latRad = lat * Math.PI / 180;
+  var tileY  = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  var pixelX = Math.floor(((lon + 180) / 360 * n - tileX) * 256);
+  var pixelY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY) * 256);
 
-  /* Scale: 3 tiles fill the canvas width */
-  const tileW = W / 3;
-  const tileH = H / 3;
-
-  /* Sub-pixel offset so our location is centred */
-  const n      = Math.pow(2, zoom);
-  const r      = lat * Math.PI / 180;
-  const exactX = (lon + 180) / 360 * n;
-  const exactY = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
-  const offX   = (exactX - tx - 0.5) * tileW;
-  const offY   = (exactY - ty - 0.5) * tileH;
-
-  /* Dark background */
+  /* Clear and draw dark background */
+  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#0d1f2d";
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, w, h);
 
-  /* Draw radar tiles 5x5 around our location */
-  for (var dx = -2; dx <= 2; dx++) {
-    for (var dy = -2; dy <= 2; dy++) {
-      var drawX = W / 2 - offX + dx * tileW - tileW / 2;
-      var drawY = H / 2 - offY + dy * tileH - tileH / 2;
+  /* Draw 3x3 grid of radar tiles — exact same positioning as satellite */
+  var drawn = 0;
+  [-1, 0, 1].forEach(function(dy) {
+    [-1, 0, 1].forEach(function(dx) {
+      var drawX = (w / 2 - pixelX) + dx * 256;
+      var drawY = (h / 2 - pixelY) + dy * 256;
       var url = "https://tilecache.rainviewer.com" + path +
-                "/256/" + zoom + "/" + (tx + dx) + "/" + (ty + dy) + "/4/1_1.png";
-      (function(img, dX, dY) {
-        if (img.complete && img.naturalWidth > 0) {
-          ctx.globalAlpha = 0.9;
-          ctx.drawImage(img, dX, dY, tileW, tileH);
-          ctx.globalAlpha = 1;
-          drawRadarOverlays(ctx, W, H, path);
-        } else {
-          img.onload = function() {
+                "/256/" + zoom + "/" + (tileY + dy) + "/" + (tileX + dx) + "/4/1_1.png";
+      var img = _getRadarImg(url);
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, drawX, drawY, 256, 256);
+        drawn++;
+        if (drawn === 1) drawRadarChrome(ctx, w, h, path);
+      } else {
+        (function(i, dX, dY) {
+          i.onload = function() {
             if (compassMapMode !== "radar") return;
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(img, dX, dY, tileW, tileH);
-            ctx.globalAlpha = 1;
-            drawRadarOverlays(ctx, W, H, path);
+            ctx.drawImage(i, dX, dY, 256, 256);
+            drawRadarChrome(ctx, w, h, path);
           };
-        }
-      })(getTileImg(url), drawX, drawY);
-    }
-  }
+        })(img, drawX, drawY);
+      }
+    });
+  });
 
-  drawRadarOverlays(ctx, W, H, path);
+  drawRadarChrome(ctx, w, h, path);
 }
 
-function drawRadarOverlays(ctx, W, H, path) {
+/* Crosshair + timestamp drawn on top */
+function drawRadarChrome(ctx, w, h, path) {
   /* Red crosshair */
   ctx.save();
-  ctx.strokeStyle = "rgba(255,50,50,1)";
-  ctx.lineWidth   = 2.5;
-  ctx.shadowColor = "rgba(255,50,50,0.5)";
-  ctx.shadowBlur  = 6;
-  ctx.beginPath(); ctx.moveTo(W / 2 - 14, H / 2); ctx.lineTo(W / 2 + 14, H / 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W / 2, H / 2 - 14); ctx.lineTo(W / 2, H / 2 + 14); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,40,40,1)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(w/2-14, h/2); ctx.lineTo(w/2+14, h/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2, h/2-14); ctx.lineTo(w/2, h/2+14); ctx.stroke();
   ctx.restore();
 
   /* Timestamp */
-  var nums = path.match(/[0-9]{9,}/);
-  if (nums) {
-    var lbl = new Date(parseInt(nums[0]) * 1000)
+  var m = path ? path.match(/[0-9]{9,}/) : null;
+  if (m) {
+    var lbl = new Date(parseInt(m[0]) * 1000)
       .toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
-    var pw = ctx.measureText(lbl).width + 22;
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.72)";
-    ctx.fillRect(8, H - 30, pw, 24);
-    ctx.fillStyle = "#ffffff";
     ctx.font = "bold 13px sans-serif";
+    var pw = ctx.measureText(lbl).width + 22;
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(8, h - 30, pw, 24);
+    ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
-    ctx.fillText(lbl, 18, H - 13);
+    ctx.fillText(lbl, 18, h - 13);
     ctx.restore();
   }
 }
 
 async function fetchRadarFrames() {
   try {
-    var res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+    var res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
     if (!res.ok) throw new Error("HTTP " + res.status);
     var data = await res.json();
-    radarFrames = [
-      ...(data.radar && data.radar.past    ? data.radar.past.map(function(f) { return f.path; })    : []),
-      ...(data.radar && data.radar.nowcast ? data.radar.nowcast.map(function(f) { return f.path; }) : [])
-    ];
+    var past    = (data.radar && data.radar.past)    ? data.radar.past.map(function(f)    { return f.path; }) : [];
+    var nowcast = (data.radar && data.radar.nowcast) ? data.radar.nowcast.map(function(f) { return f.path; }) : [];
+    radarFrames = past.concat(nowcast);
     radarFrameIdx = 0;
-    /* Preload first frame */
-    if (radarFrames.length) {
-      var lat  = marineLocationLat != null ? marineLocationLat : userLat;
-      var lon  = marineLocationLon != null ? marineLocationLon : userLon;
-      var zoom = 4;
-      var t    = latLonToTile(lat, lon, zoom);
-      var p    = radarFrames[0];
-      for (var dx = -2; dx <= 2; dx++) for (var dy = -2; dy <= 2; dy++) {
-        getTileImg("https://tilecache.rainviewer.com" + p +
-          "/256/" + zoom + "/" + (t.x+dx) + "/" + (t.y+dy) + "/4/1_1.png");
+    /* Preload first frame tiles */
+    if (radarFrames.length && (marineLocationLat || userLat)) {
+      var lat   = marineLocationLat || userLat;
+      var lon   = marineLocationLon || userLon;
+      var zoom  = 6;
+      var n2    = Math.pow(2, zoom);
+      var txP   = Math.floor((lon + 180) / 360 * n2);
+      var latR  = lat * Math.PI / 180;
+      var tyP   = Math.floor((1 - Math.log(Math.tan(latR) + 1/Math.cos(latR)) / Math.PI) / 2 * n2);
+      var p0    = radarFrames[0];
+      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+        _getRadarImg("https://tilecache.rainviewer.com" + p0 +
+          "/256/" + zoom + "/" + (tyP+dy) + "/" + (txP+dx) + "/4/1_1.png");
       }
     }
   } catch(e) {
@@ -3023,13 +3002,16 @@ async function fetchRadarFrames() {
   }
 }
 
-function startRadarAnimation() {
+function startRadarAnimation(canvas) {
   stopRadarAnimation();
   if (!radarFrames.length) return;
   var interval = Math.max(150, Math.round(1100 - radarSpeed * 100));
+  var cv = canvas || document.getElementById("compassMapCanvas");
+  var w  = cv ? cv.width  : 300;
+  var h  = cv ? cv.height : 300;
   radarAnimTimer = setInterval(function() {
     radarFrameIdx = (radarFrameIdx + 1) % radarFrames.length;
-    drawRadarFrame();
+    if (compassMapMode === "radar") drawRadarFrame(cv, w, h);
   }, interval);
 }
 
