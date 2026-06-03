@@ -1868,16 +1868,19 @@ function getTileImg(url) {
   return _radarImgCache[url];
 }
 
-/* Draw one radar frame onto the canvas — called by animation tick */
+/* Draw one radar frame onto the dedicated radarCanvas */
 function drawRadarFrame() {
-  const canvas = document.getElementById("compassMapCanvas");
+  if (compassMapMode !== "radar") return;
+  const canvas = document.getElementById("radarCanvas");
   if (!canvas || !radarFrames.length) return;
 
-  const W    = canvas.width;
-  const H    = canvas.height;
+  const W    = canvas.width  || canvas.offsetWidth  || 300;
+  const H    = canvas.height || canvas.offsetHeight || 300;
+  if (W === 0 || H === 0) return;
+
   const lat  = marineLocationLat ?? userLat;
   const lon  = marineLocationLon ?? userLon;
-  const zoom = 4; /* state-level view */
+  const zoom = 4;
   const path = radarFrames[radarFrameIdx % radarFrames.length];
 
   const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
@@ -1886,70 +1889,85 @@ function drawRadarFrame() {
 
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
-
-  /* Dark ocean background */
   ctx.fillStyle = "#102030";
   ctx.fillRect(0, 0, W, H);
 
-  /* --- Draw OpenStreetMap base tiles (shows land/water outlines) --- */
-  for (let dx = -3; dx <= 3; dx++) {
-    for (let dy = -3; dy <= 3; dy++) {
-      const url = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
-      const img = getTileImg(url);
-      const drawX = W/2 - ox + dx*px - px/2;
-      const drawY = H/2 - oy + dy*px - px/2;
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.drawImage(img, drawX, drawY, px, px);
-        ctx.restore();
-      }
-    }
-  }
+  let tilesLoaded = 0;
 
-  /* --- Draw radar overlay tiles --- */
-  for (let dx = -3; dx <= 3; dx++) {
-    for (let dy = -3; dy <= 3; dy++) {
-      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
-      const img = getTileImg(url);
-      const drawX = W/2 - ox + dx*px - px/2;
-      const drawY = H/2 - oy + dy*px - px/2;
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.85;
-        ctx.drawImage(img, drawX, drawY, px, px);
-        ctx.restore();
-      }
-    }
-  }
-
-  /* Crosshair at centre (our location) */
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,60,60,0.95)";
-  ctx.lineWidth = 2;
-  ctx.shadowColor = "rgba(255,60,60,0.6)";
-  ctx.shadowBlur  = 4;
-  ctx.beginPath(); ctx.moveTo(W/2-12, H/2); ctx.lineTo(W/2+12, H/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W/2, H/2-12); ctx.lineTo(W/2, H/2+12); ctx.stroke();
-  ctx.restore();
-
-  /* Timestamp */
-  const m = path.match(/(\d{10,})/);
-  if (m) {
-    const lbl = new Date(parseInt(m[1])*1000)
-      .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
+  function drawOneTile(img, drawX, drawY, alpha) {
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(8, H-28, 80, 22, 5);
-    else ctx.rect(8, H-28, 80, 22);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 12px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText(lbl, 14, H-11);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, drawX, drawY, px, px);
     ctx.restore();
   }
+
+  function finishFrame() {
+    /* Crosshair */
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,60,60,0.95)";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255,60,60,0.5)";
+    ctx.shadowBlur  = 5;
+    ctx.beginPath(); ctx.moveTo(W/2-14, H/2); ctx.lineTo(W/2+14, H/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2, H/2-14); ctx.lineTo(W/2, H/2+14); ctx.stroke();
+    ctx.restore();
+
+    /* Timestamp */
+    const m = path.match(/(\d{10,})/);
+    if (m) {
+      const lbl = new Date(parseInt(m[1])*1000)
+        .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.beginPath();
+      ctx.rect(8, H-28, 86, 22);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(lbl, 13, H-11);
+      ctx.restore();
+    }
+  }
+
+  /* Draw OSM base + radar tiles; use onload for not-yet-cached tiles */
+  const totalTiles = (7*7) * 2;
+  let drawn = 0;
+  function onTileDone() {
+    drawn++;
+    if (drawn >= totalTiles) finishFrame();
+  }
+
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
+
+      /* OSM base */
+      const osmUrl = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
+      const osmImg = getTileImg(osmUrl);
+      if (osmImg.complete && osmImg.naturalWidth > 0) {
+        drawOneTile(osmImg, drawX, drawY, 0.40);
+        onTileDone();
+      } else {
+        osmImg.onload = () => { drawOneTile(osmImg, drawX, drawY, 0.40); onTileDone(); };
+        osmImg.onerror = onTileDone;
+      }
+
+      /* Radar overlay */
+      const rvUrl = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
+      const rvImg = getTileImg(rvUrl);
+      if (rvImg.complete && rvImg.naturalWidth > 0) {
+        drawOneTile(rvImg, drawX, drawY, 0.85);
+        onTileDone();
+      } else {
+        rvImg.onload = () => { drawOneTile(rvImg, drawX, drawY, 0.85); onTileDone(); };
+        rvImg.onerror = onTileDone;
+      }
+    }
+  }
+  /* Draw crosshair + timestamp immediately even if tiles still loading */
+  finishFrame();
 }
 
 async function fetchRadarFrames() {
@@ -2811,49 +2829,52 @@ function updateCompassMap() {
 
   if (compassMapMode === "none") {
     canvas.style.display = "none";
-    /* Show compass content again */
     const windBox = document.querySelector("#windWidget .windBox");
     if (windBox) windBox.style.display = "";
+    const radarOff = document.getElementById("radarCanvas");
+    if (radarOff) radarOff.style.display = "none";
     return;
   }
 
   /* ---- RADAR MODE ---- */
   if (compassMapMode === "radar") {
-    /* Hide the compass/wind content, show only the radar canvas */
-    const windBox = document.querySelector("#windWidget .windBox");
-    if (windBox) windBox.style.display = "none";
+    const windBox    = document.querySelector("#windWidget .windBox");
+    const radarCanvas = document.getElementById("radarCanvas");
+    const widgetEl   = document.getElementById("windWidget");
 
-    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
-    if (!widgetFrame) return;
+    /* Hide compass, show radar canvas covering full widget */
+    if (windBox)    windBox.style.display    = "none";
+    canvas.style.display = "none"; /* hide compass map canvas */
 
-    if (canvas.parentElement !== widgetFrame) {
-      widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
-    }
+    if (!radarCanvas || !widgetEl) return;
 
-    const W = widgetFrame.offsetWidth  || 300;
-    const H = widgetFrame.offsetHeight || 300;
+    const W = widgetEl.offsetWidth  || 300;
+    const H = widgetEl.offsetHeight || 300;
 
-    canvas.width  = W;
-    canvas.height = H;
-    canvas.style.cssText = `display:block;position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;z-index:5;`;
+    radarCanvas.width  = W;
+    radarCanvas.height = H;
+    radarCanvas.style.display  = "block";
+    radarCanvas.style.position = "absolute";
+    radarCanvas.style.top      = "0";
+    radarCanvas.style.left     = "0";
+    radarCanvas.style.width    = W + "px";
+    radarCanvas.style.height   = H + "px";
+    radarCanvas.style.zIndex   = "10";
 
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#0d2136";
+    /* Dark background immediately */
+    const ctx = radarCanvas.getContext("2d");
+    ctx.fillStyle = "#102030";
     ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(150,220,255,0.7)";
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Loading radar...", W/2, H/2);
 
     if (!radarFrames.length) {
-      ctx.fillStyle = "rgba(150,220,255,0.8)";
-      ctx.font = "bold 15px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("Loading radar...", W/2, H/2);
-      if (!canvas._radarFetching) {
-        canvas._radarFetching = true;
-        fetchRadarFrames().then(() => {
-          canvas._radarFetching = false;
-          startRadarAnimation();
-          drawRadarFrame();
-        });
-      }
+      fetchRadarFrames().then(() => {
+        drawRadarFrame();
+        startRadarAnimation();
+      });
       return;
     }
 
@@ -2861,6 +2882,11 @@ function updateCompassMap() {
     if (!radarAnimTimer) startRadarAnimation();
     return;
   }
+
+  /* Leaving radar mode — restore compass, hide radar canvas */
+  const radarCanvasOff = document.getElementById("radarCanvas");
+  if (radarCanvasOff) radarCanvasOff.style.display = "none";
+  canvas.style.display = "block";
 
   /* Show compass content for non-radar modes */
   const windBox = document.querySelector("#windWidget .windBox");
@@ -2999,16 +3025,19 @@ function getTileImg(url) {
   return _radarImgCache[url];
 }
 
-/* Draw one radar frame onto the canvas — called by animation tick */
+/* Draw one radar frame onto the dedicated radarCanvas */
 function drawRadarFrame() {
-  const canvas = document.getElementById("compassMapCanvas");
+  if (compassMapMode !== "radar") return;
+  const canvas = document.getElementById("radarCanvas");
   if (!canvas || !radarFrames.length) return;
 
-  const W    = canvas.width;
-  const H    = canvas.height;
+  const W    = canvas.width  || canvas.offsetWidth  || 300;
+  const H    = canvas.height || canvas.offsetHeight || 300;
+  if (W === 0 || H === 0) return;
+
   const lat  = marineLocationLat ?? userLat;
   const lon  = marineLocationLon ?? userLon;
-  const zoom = 4; /* state-level view */
+  const zoom = 4;
   const path = radarFrames[radarFrameIdx % radarFrames.length];
 
   const { x: tx, y: ty } = latLonToTile(lat, lon, zoom);
@@ -3017,70 +3046,85 @@ function drawRadarFrame() {
 
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
-
-  /* Dark ocean background */
   ctx.fillStyle = "#102030";
   ctx.fillRect(0, 0, W, H);
 
-  /* --- Draw OpenStreetMap base tiles (shows land/water outlines) --- */
-  for (let dx = -3; dx <= 3; dx++) {
-    for (let dy = -3; dy <= 3; dy++) {
-      const url = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
-      const img = getTileImg(url);
-      const drawX = W/2 - ox + dx*px - px/2;
-      const drawY = H/2 - oy + dy*px - px/2;
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.drawImage(img, drawX, drawY, px, px);
-        ctx.restore();
-      }
-    }
-  }
+  let tilesLoaded = 0;
 
-  /* --- Draw radar overlay tiles --- */
-  for (let dx = -3; dx <= 3; dx++) {
-    for (let dy = -3; dy <= 3; dy++) {
-      const url = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
-      const img = getTileImg(url);
-      const drawX = W/2 - ox + dx*px - px/2;
-      const drawY = H/2 - oy + dy*px - px/2;
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = 0.85;
-        ctx.drawImage(img, drawX, drawY, px, px);
-        ctx.restore();
-      }
-    }
-  }
-
-  /* Crosshair at centre (our location) */
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,60,60,0.95)";
-  ctx.lineWidth = 2;
-  ctx.shadowColor = "rgba(255,60,60,0.6)";
-  ctx.shadowBlur  = 4;
-  ctx.beginPath(); ctx.moveTo(W/2-12, H/2); ctx.lineTo(W/2+12, H/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W/2, H/2-12); ctx.lineTo(W/2, H/2+12); ctx.stroke();
-  ctx.restore();
-
-  /* Timestamp */
-  const m = path.match(/(\d{10,})/);
-  if (m) {
-    const lbl = new Date(parseInt(m[1])*1000)
-      .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
+  function drawOneTile(img, drawX, drawY, alpha) {
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(8, H-28, 80, 22, 5);
-    else ctx.rect(8, H-28, 80, 22);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 12px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText(lbl, 14, H-11);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, drawX, drawY, px, px);
     ctx.restore();
   }
+
+  function finishFrame() {
+    /* Crosshair */
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,60,60,0.95)";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255,60,60,0.5)";
+    ctx.shadowBlur  = 5;
+    ctx.beginPath(); ctx.moveTo(W/2-14, H/2); ctx.lineTo(W/2+14, H/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2, H/2-14); ctx.lineTo(W/2, H/2+14); ctx.stroke();
+    ctx.restore();
+
+    /* Timestamp */
+    const m = path.match(/(\d{10,})/);
+    if (m) {
+      const lbl = new Date(parseInt(m[1])*1000)
+        .toLocaleTimeString([], { hour:"numeric", minute:"2-digit", hour12:true });
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.beginPath();
+      ctx.rect(8, H-28, 86, 22);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(lbl, 13, H-11);
+      ctx.restore();
+    }
+  }
+
+  /* Draw OSM base + radar tiles; use onload for not-yet-cached tiles */
+  const totalTiles = (7*7) * 2;
+  let drawn = 0;
+  function onTileDone() {
+    drawn++;
+    if (drawn >= totalTiles) finishFrame();
+  }
+
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dy = -3; dy <= 3; dy++) {
+      const drawX = W/2 - ox + dx*px - px/2;
+      const drawY = H/2 - oy + dy*px - px/2;
+
+      /* OSM base */
+      const osmUrl = `https://tile.openstreetmap.org/${zoom}/${tx+dx}/${ty+dy}.png`;
+      const osmImg = getTileImg(osmUrl);
+      if (osmImg.complete && osmImg.naturalWidth > 0) {
+        drawOneTile(osmImg, drawX, drawY, 0.40);
+        onTileDone();
+      } else {
+        osmImg.onload = () => { drawOneTile(osmImg, drawX, drawY, 0.40); onTileDone(); };
+        osmImg.onerror = onTileDone;
+      }
+
+      /* Radar overlay */
+      const rvUrl = `https://tilecache.rainviewer.com${path}/256/${zoom}/${tx+dx}/${ty+dy}/4/1_1.png`;
+      const rvImg = getTileImg(rvUrl);
+      if (rvImg.complete && rvImg.naturalWidth > 0) {
+        drawOneTile(rvImg, drawX, drawY, 0.85);
+        onTileDone();
+      } else {
+        rvImg.onload = () => { drawOneTile(rvImg, drawX, drawY, 0.85); onTileDone(); };
+        rvImg.onerror = onTileDone;
+      }
+    }
+  }
+  /* Draw crosshair + timestamp immediately even if tiles still loading */
+  finishFrame();
 }
 
 async function fetchRadarFrames() {
