@@ -1651,6 +1651,11 @@ function attachCompassSettingsEvents() {
       compassZoom = parseInt(zoomSlider.value);
       document.getElementById("compassZoomLabel").textContent = compassZoom;
       localStorage.setItem("compassZoom", compassZoom);
+      /* For radar mode, force iframe reload with new zoom */
+      if (compassMapMode === "radar") {
+        const ifrZ = document.getElementById("radarIframe");
+        if (ifrZ) ifrZ.src = "";
+      }
       updateCompassMap();
     });
   }
@@ -2638,65 +2643,46 @@ function shiftHue(hex, degree) {
    SATELLITE COMPASS
    ========================================================================== */
 function updateCompassMap() {
-  const canvas    = document.getElementById("compassMapCanvas");
-  const radarCv   = document.getElementById("radarCanvas");
-  const windBox   = document.querySelector("#windWidget .windBox");
-  const widgetEl  = document.getElementById("windWidget");
-
+  const canvas   = document.getElementById("compassMapCanvas");
+  const iframe   = document.getElementById("radarIframe");
   if (!canvas) return;
 
-  if (compassMapMode !== "radar") stopRadarAnimation();
+  stopRadarAnimation();
 
-  /* ── RADAR MODE — use same canvas + placement as "widget" satellite mode ── */
-  if (compassMapMode === "radar") {
-    if (windBox) windBox.style.display = "";
-    if (radarCv) radarCv.style.display = "none";
-
-    const widgetFrame = document.querySelector("#windWidget .widgetFrame");
-    if (!widgetFrame) return;
-    if (canvas.parentElement !== widgetFrame) widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
-
-    const w = widgetFrame.offsetWidth;
-    const h = widgetFrame.offsetHeight;
-    if (!w || !h) { setTimeout(updateCompassMap, 50); return; }
-
-    canvas.width  = w;
-    canvas.height = h;
-    canvas.style.cssText = "display:block;position:absolute;top:0;left:0;width:" + w + "px;height:" + h + "px;border-radius:12px;opacity:1;z-index:5;";
-
-    /* Show loading text */
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#0d1f2d";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#7dd8f8";
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Loading radar...", w / 2, h / 2);
-
-    if (!radarFrames.length) {
-      fetchRadarFrames().then(() => {
-        drawRadarFrame(canvas, w, h);
-        startRadarAnimation(canvas);
-      });
-      return;
-    }
-
-    drawRadarFrame(canvas, w, h);
-    if (!radarAnimTimer) startRadarAnimation(canvas);
-    return;
+  /* Helper: hide iframe */
+  function hideIframe() {
+    if (iframe) { iframe.style.display = "none"; iframe.src = ""; }
   }
 
-  /* ── NON-RADAR MODES — restore compass ── */
-  if (radarCv)  radarCv.style.display  = "none";
-  if (windBox)  windBox.style.display  = "";
-  canvas.style.display = "block";
-
+  /* ── NONE ── */
   if (compassMapMode === "none") {
     canvas.style.display = "none";
+    hideIframe();
     return;
   }
 
+  /* ── RADAR: RainViewer iframe fills the widget ── */
+  if (compassMapMode === "radar") {
+    canvas.style.display = "none";
+    if (!iframe) return;
+
+    const lat  = marineLocationLat != null ? marineLocationLat : (userLat  || 29.9);
+    const lon  = marineLocationLon != null ? marineLocationLon : (userLon  || -81.3);
+    const zoom = Math.max(4, Math.min(compassZoom, 14));
+
+    const newSrc = "https://www.rainviewer.com/map.html?loc=" +
+      lat.toFixed(5) + "," + lon.toFixed(5) + "," + zoom +
+      "&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&mwr=1&ext=1&layer=radar&sm=1&sn=1";
+
+    if (iframe.src !== newSrc) iframe.src = newSrc;
+    iframe.style.cssText = "display:block;position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:12px;z-index:10;";
+    return;
+  }
+
+  /* ── SATELLITE MODES: hide iframe, draw canvas ── */
+  hideIframe();
   if (!marineLocationLat || !marineLocationLon) return;
+  canvas.style.display = "block";
 
   if (compassMapMode === "widget") {
     const widgetFrame = document.querySelector("#windWidget .widgetFrame");
@@ -2704,15 +2690,17 @@ function updateCompassMap() {
     if (canvas.parentElement !== widgetFrame) widgetFrame.insertBefore(canvas, widgetFrame.firstChild);
     const w = widgetFrame.offsetWidth;
     const h = widgetFrame.offsetHeight;
+    if (!w || !h) { setTimeout(updateCompassMap, 50); return; }
     canvas.width = w; canvas.height = h;
-    canvas.style.cssText = "position:absolute;top:0;left:0;width:" + w + "px;height:" + h + "px;border-radius:12px;opacity:0.45;z-index:0;";
+    canvas.style.cssText = "position:absolute;top:0;left:0;width:" + w + "px;height:" + h + "px;border-radius:12px;opacity:0.45;z-index:0;display:block;";
     drawMapTiles(canvas, w, h);
   } else {
+    /* compass mode */
     const compassEl = document.getElementById("compassWidget");
     if (!compassEl) return;
     if (canvas.parentElement !== compassEl) compassEl.insertBefore(canvas, compassEl.firstChild);
     canvas.width = compassSize; canvas.height = compassSize;
-    canvas.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;opacity:0.65;z-index:0;";
+    canvas.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;opacity:0.65;z-index:0;display:block;";
     drawMapTiles(canvas, compassSize, compassSize);
   }
 }
