@@ -2661,21 +2661,32 @@ function updateCompassMap() {
     return;
   }
 
-  /* ── RADAR: RainViewer iframe fills the widget ── */
+  /* ── RADAR: RainViewer iframe fills the entire widget ── */
   if (compassMapMode === "radar") {
     canvas.style.display = "none";
     if (!iframe) return;
 
+    const widgetEl2 = document.getElementById("windWidget");
+    if (!widgetEl2) return;
+
+    /* Make sure the widget has position:relative so absolute children work */
+    widgetEl2.style.position = "relative";
+    widgetEl2.style.overflow = "hidden";
+
+    /* Move iframe directly into the widget (not widgetFrame) */
+    if (iframe.parentElement !== widgetEl2) widgetEl2.appendChild(iframe);
+
     const lat  = marineLocationLat != null ? marineLocationLat : (userLat  || 29.9);
     const lon  = marineLocationLon != null ? marineLocationLon : (userLon  || -81.3);
-    const zoom = Math.max(4, Math.min(compassZoom, 14));
+    /* zoom 6 = see whole state, allow sliding down to 2 for wider view */
+    const zoom = Math.max(2, Math.min(compassZoom, 14));
 
     const newSrc = "https://www.rainviewer.com/map.html?loc=" +
       lat.toFixed(5) + "," + lon.toFixed(5) + "," + zoom +
       "&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=1&rmt=4&mwr=1&ext=1&layer=radar&sm=1&sn=1";
 
     if (iframe.src !== newSrc) iframe.src = newSrc;
-    iframe.style.cssText = "display:block;position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:12px;z-index:10;";
+    iframe.style.cssText = "display:block;position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:inherit;z-index:10;";
     return;
   }
 
