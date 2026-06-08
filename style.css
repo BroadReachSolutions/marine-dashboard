@@ -1595,3 +1595,140 @@ body.layout-edit .widget.theme-clean {
     outline: 2px solid rgba(100,200,255,0.8) !important;
     z-index: 999;
   }
+
+
+/* ── Merged Control Widget ── */
+.controlPanel {
+  padding: 10px 12px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.controlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controlLabel {
+  font-size: 12px;
+  color: #7db8d8;
+  white-space: nowrap;
+  min-width: 68px;
+}
+
+.controlSelect,
+.controlDate {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(125,186,220,0.28);
+  border-radius: 6px;
+  color: #eef7ff;
+  padding: 4px 8px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+
+.controlBtns {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ctrlBtn {
+  flex: 1;
+  padding: 7px 4px;
+  border-radius: 7px;
+  border: 1px solid rgba(125,186,220,0.3);
+  background: rgba(255,255,255,0.06);
+  color: #d0ecff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+}
+
+.ctrlBtn:hover {
+  background: rgba(100,180,255,0.18);
+}
+
+.ctrlBtnEdit {
+  background: rgba(100,180,255,0.14);
+  border-color: rgba(100,180,255,0.4);
+  color: #a8daff;
+}
+
+.ctrlBtnEdit.active {
+  background: rgba(100,180,255,0.32);
+  color: #ffffff;
+}
+
+/* ── Settings helper styles ── */
+.checkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #c8e8ff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settingsTextInput {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(125,186,220,0.3);
+  border-radius: 6px;
+  color: #eef7ff;
+  padding: 4px 7px;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.settingsInlineBtn {
+  background: rgba(100,180,255,0.18);
+  border: 1px solid rgba(100,180,255,0.35);
+  border-radius: 6px;
+  color: #eef7ff;
+  padding: 4px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settingsNumInput {
+  width: 60px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(125,186,220,0.3);
+  border-radius: 5px;
+  color: #eef7ff;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.settingsDivider {
+  border-top: 1px solid rgba(125,186,220,0.15);
+  margin: 4px 0;
+}
+
+.settingsHint {
+  font-size: 11px;
+  color: #7a9fb8;
+}
+
+/* ── Cold alert style on forecast cards ── */
+.card .tempF.cold-alert {
+  color: #74c0fc !important;
+  text-shadow: 0 0 8px rgba(116,192,252,0.6);
+}

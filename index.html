@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marine Dashboard</title>
   <link rel="stylesheet" href="style.css">
-
   <!-- PWA support -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0a1628">
@@ -19,121 +18,60 @@
     <div id="dashboardStage">
       <div id="dashboard">
 
+        <!-- ═══ CONTROL WIDGET (merged Edit + Station + Tide) ═══ -->
         <div class="widget" data-widget="layout" id="layoutWidget">
           <div class="widgetFrame">
-            <div class="widgetControls">
-              <button id="layoutSettingsBtn" class="widgetSettingsBtn" title="Dashboard settings">⚙</button>
-            </div>
             <div class="widgetHandle"></div>
-            <button id="layoutToggle" class="layoutToggle">Edit Layout</button>
+            <div class="controlPanel">
+
+              <!-- Station selector -->
+              <div class="controlRow">
+                <label for="stationSelect" class="controlLabel">Station</label>
+                <select id="stationSelect" class="controlSelect"></select>
+              </div>
+
+              <!-- Tide date picker -->
+              <div class="controlRow">
+                <label for="tideDateSelect" class="controlLabel">Tide Date</label>
+                <input type="date" id="tideDateSelect" class="controlDate">
+              </div>
+
+              <!-- Action buttons row -->
+              <div class="controlBtns">
+                <button id="viewDateBtn" class="ctrlBtn">View Day</button>
+                <button id="liveViewBtn" class="ctrlBtn">Return to Live</button>
+                <button id="layoutToggle" class="ctrlBtn ctrlBtnEdit">Edit Layout</button>
+              </div>
+
+            </div>
+
+            <!-- Dashboard settings panel (only shown in edit mode) -->
             <div class="widgetSettingsPanel dashboardSettingsPanel" data-settings-for="layout">
               <div class="settingsHeader">
                 <div class="settingsTitle">Dashboard Settings</div>
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
               <div class="settingsRow">
-                <label for="dashboardBackgroundColor">Background Color</label>
+                <label>Background Color</label>
                 <input type="color" id="dashboardBackgroundColor" value="#07131c">
               </div>
               <div class="settingsRow">
-                <label for="dashboardBackgroundHue">Background Hue</label>
+                <label>Background Hue</label>
                 <input type="range" id="dashboardBackgroundHue" min="0" max="360" value="0">
               </div>
               <div class="settingsActions">
-                <button type="button" id="dashboardResetBtn" class="settingsActionBtn">Default</button>
+                <button type="button" id="dashboardResetBtn" class="settingsActionBtn">Reset</button>
               </div>
             </div>
             <div class="widgetResize"></div>
           </div>
         </div>
 
-        <div class="widget" data-widget="stations" id="stationsWidget">
-          <div class="widgetFrame">
-            <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
-              <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
-            </div>
-            <div class="widgetHandle"></div>
-            <div class="stationPanel">
-              <div class="stationBar">
-                <label for="stationSelect" class="stationLabel">Station</label>
-                <select id="stationSelect"></select>
-              </div>
-              <div class="dateBar">
-                <label for="tideDateSelect" class="stationLabel">Tide Date</label>
-                <input type="date" id="tideDateSelect">
-                <button id="viewDateBtn" class="dateBtn">View Day</button>
-                <button id="liveViewBtn" class="dateBtn">Return to Live</button>
-              </div>
-            </div>
-            <div class="widgetSettingsPanel" data-settings-for="stations">
-              <div class="settingsHeader">
-                <div class="settingsTitle">Station Widget</div>
-                <button class="closeSettingsBtn" type="button">✕</button>
-              </div>
-              <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font</label>
-                <select class="fontSelect" data-target="row1Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row1Color" value="#eef7ff">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font</label>
-                <select class="fontSelect" data-target="row2Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
-              </div>
-            </div>
-            <div class="widgetResize"></div>
-          </div>
-        </div>
-
-        <!-- Wind / Compass — top section on mobile -->
+        <!-- ═══ COMPASS WIDGET ═══ -->
         <div class="widget" data-widget="wind" id="windWidget">
           <div class="widgetFrame">
             <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetSettingsBtn" type="button" title="Compass settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
@@ -156,65 +94,21 @@
               </div>
               <div class="windDir" id="windDir"></div>
             </div>
+
             <div class="widgetSettingsPanel" data-settings-for="wind">
               <div class="settingsHeader">
-                <div class="settingsTitle">Wind Widget</div>
+                <div class="settingsTitle">Compass Widget</div>
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
+
               <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font</label>
-                <select class="fontSelect" data-target="row1Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row1Color" value="#d9f2ff">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font</label>
-                <select class="fontSelect" data-target="row2Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row2Color" value="#b9dcec">
-              </div>
-              <div class="settingsRow">
-                <label>Address</label>
+                <label>Location Address</label>
                 <div style="display:flex;gap:6px;">
-                  <input id="marineAddressInput" type="text" placeholder="Enter address..." style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(125,186,220,0.3);border-radius:6px;color:#eef7ff;padding:4px 7px;font-size:12px;min-width:0;" />
-                  <button id="marineAddressBtn" type="button" style="background:rgba(100,180,255,0.18);border:1px solid rgba(100,180,255,0.35);border-radius:6px;color:#eef7ff;padding:4px 9px;font-size:12px;cursor:pointer;white-space:nowrap;">Set</button>
+                  <input id="marineAddressInput" type="text" placeholder="Enter address..." class="settingsTextInput" />
+                  <button id="marineAddressBtn" type="button" class="settingsInlineBtn">Set</button>
                 </div>
               </div>
-              <div class="settingsRow">
-                <label>Map Zoom</label>
-                <input type="range" id="compassZoom" min="2" max="18" value="6" style="width:100%;" />
-                <span id="compassZoomLabel" style="font-size:11px;color:#aac;">15</span>
-              </div>
+
               <div class="settingsRow">
                 <label>Map Display</label>
                 <select id="compassMapMode">
@@ -224,47 +118,49 @@
                   <option value="radar">Radar</option>
                 </select>
               </div>
+
+              <div class="settingsRow">
+                <label>Map Zoom</label>
+                <input type="range" id="compassZoom" min="2" max="18" value="6" style="width:100%;" />
+                <span id="compassZoomLabel" style="font-size:11px;color:#aac;">6</span>
+              </div>
+
               <div class="settingsRow" id="radarSpeedRow" style="display:none;">
                 <label>Radar Speed</label>
                 <input type="range" id="radarSpeed" min="1" max="10" value="5" style="width:100%;" />
                 <span id="radarSpeedLabel" style="font-size:11px;color:#aac;">5</span>
               </div>
-              <div class="settingsRow">
-                <label>Cardinal Distance</label>
-                <input type="range" id="cardinalOffset" min="0" max="60" value="20" style="width:100%;" />
-                <span id="cardinalOffsetLabel" style="font-size:11px;color:#aac;">20px</span>
-              </div>
+
               <div class="settingsRow">
                 <label>Compass Style</label>
                 <select id="compassStyle">
                   <option value="ring">Ring</option>
                   <option value="crosshair">Crosshair</option>
-                  <option value="nautical">Nautical</option>
-                  <option value="minimal">Minimal</option>
                 </select>
               </div>
+
               <div class="settingsRow">
                 <label>Show Wind Info</label>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
-                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
-                    <input type="checkbox" id="showWindMph" checked /> mph |
-                  </label>
-                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
-                    <input type="checkbox" id="showWindKph" /> kph
-                  </label>
-                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
-                    <input type="checkbox" id="showWindKnots" /> knots
-                  </label>
-                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;">
-                    <input type="checkbox" id="showWindDir" checked /> direction
-                  </label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="showWindMph" checked> mph</label>
+                  <label class="checkLabel"><input type="checkbox" id="showWindKph"> kph</label>
+                  <label class="checkLabel"><input type="checkbox" id="showWindKnots"> knots</label>
+                  <label class="checkLabel"><input type="checkbox" id="showWindDir" checked> direction</label>
                 </div>
               </div>
+
+              <div class="settingsRow">
+                <label>Cardinal Distance</label>
+                <input type="range" id="cardinalOffset" min="0" max="60" value="20" style="width:100%;" />
+                <span id="cardinalOffsetLabel" style="font-size:11px;color:#aac;">20px</span>
+              </div>
+
               <div class="settingsRow">
                 <label>Speed Offset</label>
                 <input type="range" id="windTopOffset" min="-80" max="80" value="0" style="width:100%;" />
                 <span id="windTopOffsetLabel" style="font-size:11px;color:#aac;">0px</span>
               </div>
+
               <div class="settingsRow">
                 <label>Direction Offset</label>
                 <input type="range" id="windBotOffset" min="-80" max="80" value="0" style="width:100%;" />
@@ -275,86 +171,61 @@
           </div>
         </div>
 
-        <!-- Temperature -->
+        <!-- ═══ TEMPERATURE WIDGET ═══ -->
         <div class="widget" data-widget="temp" id="tempWidget">
           <div class="widgetFrame">
             <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetSettingsBtn" type="button" title="Temperature settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
             <div class="tempBox">
               <div id="tempMain"></div>
               <div id="tempSub"></div>
+              <div id="tempCelsius" style="display:none;"></div>
             </div>
             <div class="widgetSettingsPanel" data-settings-for="temp">
               <div class="settingsHeader">
                 <div class="settingsTitle">Temperature Widget</div>
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
+
               <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                </select>
+                <label>Show</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="tempShowTemp" checked> Temperature</label>
+                  <label class="checkLabel"><input type="checkbox" id="tempShowHumidity" checked> Humidity</label>
+                  <label class="checkLabel"><input type="checkbox" id="tempShowCelsius"> Also show °C</label>
+                </div>
               </div>
+
               <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+                <label>Heat Alert (°F)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="tempHeatAlertOn" checked> Enable</label>
+                  <input type="number" id="tempHeatAlertVal" value="95" min="50" max="130" style="width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(125,186,220,0.3);border-radius:5px;color:#eef7ff;padding:3px 6px;font-size:12px;">
+                  <span style="font-size:11px;color:#aac;">°F threshold</span>
+                </div>
               </div>
+
               <div class="settingsRow">
-                <label>Row 1 Font</label>
-                <select class="fontSelect" data-target="row1Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row1Color" value="#f5fbff">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font</label>
-                <select class="fontSelect" data-target="row2Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+                <label>Cold Alert (°F)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="tempColdAlertOn"> Enable</label>
+                  <input type="number" id="tempColdAlertVal" value="40" min="-20" max="80" style="width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(125,186,220,0.3);border-radius:5px;color:#eef7ff;padding:3px 6px;font-size:12px;">
+                  <span style="font-size:11px;color:#aac;">°F threshold</span>
+                </div>
               </div>
             </div>
             <div class="widgetResize"></div>
           </div>
         </div>
 
-        <!-- Tide Status -->
+        <!-- ═══ TIDE STATUS WIDGET ═══ -->
         <div class="widget" data-widget="tideStatus" id="tideStatusWidget">
           <div class="widgetFrame">
             <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetSettingsBtn" type="button" title="Tide Status settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
@@ -366,68 +237,19 @@
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
               <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font</label>
-                <select class="fontSelect" data-target="row1Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row1Color" value="#ff7c7c">
-              </div>
-              <div class="settingsRow">
-                <label>Row 1 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font</label>
-                <select class="fontSelect" data-target="row2Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row2Color" value="#dff6ff">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+                <label>Alert text color on low tide</label>
+                <label class="checkLabel"><input type="checkbox" id="tideStatusColorAlert" checked> Enable red color alert</label>
               </div>
             </div>
             <div class="widgetResize"></div>
           </div>
         </div>
 
-        <!-- Forecast — middle section on mobile -->
+        <!-- ═══ FORECAST WIDGET ═══ -->
         <div class="widget" data-widget="forecast" id="forecastWidget">
           <div class="widgetFrame">
             <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetSettingsBtn" type="button" title="Forecast settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
@@ -439,70 +261,67 @@
                 <div class="settingsTitle">Forecast Widget</div>
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
+
               <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                  <option value="dynamic">Animated Forecast</option>
-                </select>
+                <label>Show on hourly cards</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="fcShowTemp" checked> Temperature</label>
+                  <label class="checkLabel"><input type="checkbox" id="fcShowHumidity" checked> Humidity</label>
+                  <label class="checkLabel"><input type="checkbox" id="fcShowRain" checked> Rain %</label>
+                  <label class="checkLabel"><input type="checkbox" id="fcShowWind" checked> Wind speed</label>
+                  <label class="checkLabel"><input type="checkbox" id="fcShowCondition" checked> Conditions</label>
+                </div>
               </div>
+
+              <div class="settingsDivider"></div>
+
               <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
+                <label>Heat Alert (°F)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="fcHeatAlertOn" checked> Enable</label>
+                  <input type="number" id="fcHeatAlertVal" value="95" min="50" max="130" class="settingsNumInput">
+                  <span class="settingsHint">°F — turns temp red</span>
+                </div>
               </div>
+
               <div class="settingsRow">
-                <label>Row 1 Font</label>
-                <select class="fontSelect" data-target="row1Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
+                <label>Cold Alert (°F)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="fcColdAlertOn"> Enable</label>
+                  <input type="number" id="fcColdAlertVal" value="40" min="-20" max="80" class="settingsNumInput">
+                  <span class="settingsHint">°F — turns temp blue with frost</span>
+                </div>
               </div>
+
+              <div class="settingsDivider"></div>
+
               <div class="settingsRow">
-                <label>Row 1 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row1Color" value="#f1fbff">
+                <label>Rain Alert (%)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="fcRainAlertOn" checked> Enable</label>
+                  <input type="number" id="fcRainAlertVal" value="70" min="0" max="100" class="settingsNumInput">
+                  <span class="settingsHint">% — turns rain% red</span>
+                </div>
               </div>
+
               <div class="settingsRow">
-                <label>Row 1 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row1AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font</label>
-                <select class="fontSelect" data-target="row2Font">
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="Trebuchet MS">Trebuchet MS</option>
-                </select>
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Font Color</label>
-                <input type="color" class="fontColorInput" data-target="row2Color" value="#9fc2d9">
-              </div>
-              <div class="settingsRow">
-                <label>Row 2 Alert Color</label>
-                <input type="color" class="alertColorInput" data-target="row2AlertColor" value="#ff7c7c">
-              </div>
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+                <label>Wind Alert (mph)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="fcWindAlertOn" checked> Enable</label>
+                  <input type="number" id="fcWindAlertVal" value="25" min="0" max="100" class="settingsNumInput">
+                  <span class="settingsHint">mph — turns wind red</span>
+                </div>
               </div>
             </div>
             <div class="widgetResize"></div>
           </div>
         </div>
 
-        <!-- Tide Chart — bottom section on mobile -->
+        <!-- ═══ TIDE CHART WIDGET ═══ -->
         <div class="widget" data-widget="tideChart" id="tideChartWidget">
           <div class="widgetFrame">
             <div class="widgetControls">
-              <button class="widgetSettingsBtn" type="button" title="Widget settings">⚙</button>
+              <button class="widgetSettingsBtn" type="button" title="Tide Chart settings">⚙</button>
               <button class="widgetHideBtn" type="button" title="Hide widget">👁</button>
             </div>
             <div class="widgetHandle"></div>
@@ -517,22 +336,23 @@
                 <div class="settingsTitle">Tide Chart Widget</div>
                 <button class="closeSettingsBtn" type="button">✕</button>
               </div>
+
               <div class="settingsRow">
-                <label>Theme</label>
-                <select class="themeSelect" data-setting="theme">
-                  <option value="default">Default</option>
-                  <option value="clean">Clean</option>
-                  <option value="glass">Glass</option>
-                  <option value="ocean">Ocean</option>
-                  <option value="sunset">Sunset</option>
-                </select>
+                <label>Low Tide Alert (ft)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="tideChartLowAlertOn" checked> Enable</label>
+                  <input type="number" id="tideChartLowAlertVal" value="0.4" min="-5" max="10" step="0.1" class="settingsNumInput">
+                  <span class="settingsHint">ft — alerts below this</span>
+                </div>
               </div>
+
               <div class="settingsRow">
-                <label>Widget Background</label>
-                <input type="color" class="widgetBgColorInput" data-setting="backgroundColor" value="#0a1924">
-              </div>
-              <div class="settingsActions">
-                <button type="button" class="settingsActionBtn resetWidgetBtn">Default</button>
+                <label>High Tide Alert (ft)</label>
+                <div class="checkRow">
+                  <label class="checkLabel"><input type="checkbox" id="tideChartHighAlertOn"> Enable</label>
+                  <input type="number" id="tideChartHighAlertVal" value="5.0" min="0" max="20" step="0.1" class="settingsNumInput">
+                  <span class="settingsHint">ft — alerts above this</span>
+                </div>
               </div>
             </div>
             <div class="widgetResize"></div>

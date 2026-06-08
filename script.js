@@ -82,9 +82,35 @@ let tideViewOffsetMs      = 0;   /* ms offset for mobile tide drag */
 
 const TIDE_WINDOW_HOURS = 24;
 const LIVE_LINE_OFFSET_MINUTES = 30;
-const LOW_TIDE_ALERT_FT = 0.4;
-const WIND_ALERT_MPH = 25;
-const HEAT_ALERT_F = 95;
+/* Alert thresholds — now user-configurable, these are defaults */
+let LOW_TIDE_ALERT_FT  = 0.4;
+let HIGH_TIDE_ALERT_FT = 5.0;
+let WIND_ALERT_MPH     = 25;
+let HEAT_ALERT_F       = 95;
+let COLD_ALERT_F       = 40;
+
+/* Feature flags */
+let tempShowTemp         = true;
+let tempShowHumidity     = true;
+let tempShowCelsius      = false;
+let tempHeatAlertOn      = true;
+let tempColdAlertOn      = false;
+
+let fcShowTemp           = true;
+let fcShowHumidity       = true;
+let fcShowRain           = true;
+let fcShowWind           = true;
+let fcShowCondition      = true;
+let fcHeatAlertOn        = true;
+let fcColdAlertOn        = false;
+let fcColdAlertVal       = 40;
+let fcRainAlertOn        = true;
+let fcRainAlertVal       = 70;
+let fcWindAlertOn        = true;
+
+let tideStatusColorAlert = true;
+let tideChartLowAlertOn  = true;
+let tideChartHighAlertOn = false;
 
 let tidePredictions = [];
 let layoutEditMode = false;
@@ -1160,6 +1186,51 @@ function attachEvents() {
     }
   }
 
+  /* ── New settings controls ── */
+  function _chk(id, setter) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", () => { setter(el.checked); localStorage.setItem(id, el.checked ? "1" : "0"); });
+  }
+  function _num(id, setter) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", () => { const v = parseFloat(el.value) || 0; setter(v); localStorage.setItem(id, el.value); });
+  }
+
+  /* Temperature */
+  _chk("tempShowTemp",     v => { tempShowTemp     = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _chk("tempShowHumidity", v => { tempShowHumidity = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _chk("tempShowCelsius",  v => { tempShowCelsius  = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _chk("tempHeatAlertOn",  v => { tempHeatAlertOn  = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _chk("tempColdAlertOn",  v => { tempColdAlertOn  = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _num("tempHeatAlertVal", v => { HEAT_ALERT_F     = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+  _num("tempColdAlertVal", v => { COLD_ALERT_F     = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
+
+  /* Forecast */
+  _chk("fcShowTemp",      v => { fcShowTemp      = v; renderWeather(null); });
+  _chk("fcShowHumidity",  v => { fcShowHumidity  = v; renderWeather(null); });
+  _chk("fcShowRain",      v => { fcShowRain      = v; renderWeather(null); });
+  _chk("fcShowWind",      v => { fcShowWind      = v; renderWeather(null); });
+  _chk("fcShowCondition", v => { fcShowCondition = v; renderWeather(null); });
+  _chk("fcHeatAlertOn",   v => { fcHeatAlertOn   = v; renderWeather(null); });
+  _chk("fcColdAlertOn",   v => { fcColdAlertOn   = v; renderWeather(null); });
+  _chk("fcRainAlertOn",   v => { fcRainAlertOn   = v; renderWeather(null); });
+  _chk("fcWindAlertOn",   v => { fcWindAlertOn   = v; renderWeather(null); });
+  _num("fcHeatAlertVal",  v => { HEAT_ALERT_F    = v; renderWeather(null); });
+  _num("fcColdAlertVal",  v => { fcColdAlertVal  = v; renderWeather(null); });
+  _num("fcRainAlertVal",  v => { fcRainAlertVal  = v; renderWeather(null); });
+  _num("fcWindAlertVal",  v => { WIND_ALERT_MPH  = v; renderWeather(null); });
+
+  /* Tide status */
+  _chk("tideStatusColorAlert", v => { tideStatusColorAlert = v; if (tidePredictions.length) drawTide(tidePredictions); });
+
+  /* Tide chart */
+  _chk("tideChartLowAlertOn",   v => { tideChartLowAlertOn  = v; if (tidePredictions.length) drawTide(tidePredictions); });
+  _chk("tideChartHighAlertOn",  v => { tideChartHighAlertOn = v; if (tidePredictions.length) drawTide(tidePredictions); });
+  _num("tideChartLowAlertVal",  v => { LOW_TIDE_ALERT_FT    = v; if (tidePredictions.length) drawTide(tidePredictions); });
+  _num("tideChartHighAlertVal", v => { HIGH_TIDE_ALERT_FT   = v; if (tidePredictions.length) drawTide(tidePredictions); });
+
 }
 
 /* ==========================================================================
@@ -1338,17 +1409,37 @@ function renderCurrentConditions(data) {
   if (idx < 0) idx = 0;
   const i = idx;
 
-  const temp = Math.round(data.hourly.temperature_2m[i]);
+  const temp     = Math.round(data.hourly.temperature_2m[i]);
   const humidity = Math.round(data.hourly.relative_humidity_2m[i]);
-  lastWindMph = Math.round(data.hourly.windspeed_10m[i]);
-  lastWindDeg = Math.round(data.hourly.winddirection_10m[i]);
+  const tempC    = Math.round((temp - 32) * 5 / 9);
+  lastWindMph    = Math.round(data.hourly.windspeed_10m[i]);
+  lastWindDeg    = Math.round(data.hourly.winddirection_10m[i]);
 
-  const tempMain = document.getElementById("tempMain");
-  const tempSub = document.getElementById("tempSub");
-  if (tempMain) tempMain.textContent = `${temp}°`;
-  if (tempSub) tempSub.textContent = `${humidity}% Humidity`;
+  const tempMain    = document.getElementById("tempMain");
+  const tempSub     = document.getElementById("tempSub");
+  const tempCelsius = document.getElementById("tempCelsius");
 
-  /* Update mobile header */
+  /* Apply heat/cold alert color */
+  let tempColor = "";
+  if (tempHeatAlertOn && temp >= HEAT_ALERT_F) tempColor = "#ff6b6b";
+  else if (tempColdAlertOn && temp <= COLD_ALERT_F) tempColor = "#74c0fc";
+
+  if (tempMain) {
+    tempMain.style.display = tempShowTemp ? "" : "none";
+    tempMain.textContent   = `${temp}°`;
+    if (tempColor) tempMain.style.color = tempColor;
+    else tempMain.style.color = "";
+  }
+  if (tempSub) {
+    tempSub.style.display = tempShowHumidity ? "" : "none";
+    tempSub.textContent   = `${humidity}% Humidity`;
+  }
+  if (tempCelsius) {
+    tempCelsius.style.display = tempShowCelsius ? "" : "none";
+    tempCelsius.textContent   = `${tempC}°C`;
+  }
+
+  /* Mobile header */
   const headerTemp   = document.getElementById("mobileHeaderTempVal");
   const headerHumPct = document.getElementById("mobileHeaderHumPct");
   if (headerTemp)   headerTemp.textContent   = `${temp}°`;
@@ -1533,7 +1624,58 @@ async function loadMarineLocation() {
   const lon = localStorage.getItem("marineLocationLon");
   const address = localStorage.getItem("marineLocationAddress");
   const savedZoom = localStorage.getItem("compassZoom");
-  const savedMode = localStorage.getItem("compassMapMode");
+  /* ── New widget settings ── */
+  const _b = k => localStorage.getItem(k) !== "0"; /* default true */
+  const _n = (k, def) => parseFloat(localStorage.getItem(k) || def);
+
+  tempShowTemp         = localStorage.getItem("tempShowTemp")    !== "0";
+  tempShowHumidity     = localStorage.getItem("tempShowHumidity") !== "0";
+  tempShowCelsius      = localStorage.getItem("tempShowCelsius")  === "1";
+  tempHeatAlertOn      = localStorage.getItem("tempHeatAlertOn")  !== "0";
+  tempColdAlertOn      = localStorage.getItem("tempColdAlertOn")  === "1";
+  HEAT_ALERT_F         = _n("tempHeatAlertVal", 95);
+  COLD_ALERT_F         = _n("tempColdAlertVal", 40);
+
+  fcShowTemp           = localStorage.getItem("fcShowTemp")      !== "0";
+  fcShowHumidity       = localStorage.getItem("fcShowHumidity")  !== "0";
+  fcShowRain           = localStorage.getItem("fcShowRain")      !== "0";
+  fcShowWind           = localStorage.getItem("fcShowWind")      !== "0";
+  fcShowCondition      = localStorage.getItem("fcShowCondition") !== "0";
+  fcHeatAlertOn        = localStorage.getItem("fcHeatAlertOn")   !== "0";
+  fcColdAlertOn        = localStorage.getItem("fcColdAlertOn")   === "1";
+  fcColdAlertVal       = _n("fcColdAlertVal", 40);
+  fcRainAlertOn        = localStorage.getItem("fcRainAlertOn")   !== "0";
+  fcRainAlertVal       = _n("fcRainAlertVal", 70);
+  fcWindAlertOn        = localStorage.getItem("fcWindAlertOn")   !== "0";
+  WIND_ALERT_MPH       = _n("fcWindAlertVal", 25);
+
+  tideStatusColorAlert  = localStorage.getItem("tideStatusColorAlert") !== "0";
+  tideChartLowAlertOn   = localStorage.getItem("tideChartLowAlertOn")  !== "0";
+  tideChartHighAlertOn  = localStorage.getItem("tideChartHighAlertOn") === "1";
+  LOW_TIDE_ALERT_FT     = _n("tideChartLowAlertVal",  0.4);
+  HIGH_TIDE_ALERT_FT    = _n("tideChartHighAlertVal", 5.0);
+
+  /* Sync controls */
+  [
+    ["tempShowTemp", tempShowTemp], ["tempShowHumidity", tempShowHumidity],
+    ["tempShowCelsius", tempShowCelsius], ["tempHeatAlertOn", tempHeatAlertOn],
+    ["tempColdAlertOn", tempColdAlertOn],
+    ["fcShowTemp", fcShowTemp], ["fcShowHumidity", fcShowHumidity],
+    ["fcShowRain", fcShowRain], ["fcShowWind", fcShowWind],
+    ["fcShowCondition", fcShowCondition], ["fcHeatAlertOn", fcHeatAlertOn],
+    ["fcColdAlertOn", fcColdAlertOn], ["fcRainAlertOn", fcRainAlertOn],
+    ["fcWindAlertOn", fcWindAlertOn], ["tideStatusColorAlert", tideStatusColorAlert],
+    ["tideChartLowAlertOn", tideChartLowAlertOn], ["tideChartHighAlertOn", tideChartHighAlertOn],
+  ].forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.checked = val; });
+
+  [
+    ["tempHeatAlertVal", HEAT_ALERT_F], ["tempColdAlertVal", COLD_ALERT_F],
+    ["fcHeatAlertVal", HEAT_ALERT_F], ["fcColdAlertVal", fcColdAlertVal],
+    ["fcRainAlertVal", fcRainAlertVal], ["fcWindAlertVal", WIND_ALERT_MPH],
+    ["tideChartLowAlertVal", LOW_TIDE_ALERT_FT], ["tideChartHighAlertVal", HIGH_TIDE_ALERT_FT],
+  ].forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
+
+  const savedMode = localStorage.getItem("compassMapMode");  const savedMode = localStorage.getItem("compassMapMode");
   const savedSize = localStorage.getItem("compassSize");
   const savedStyle = localStorage.getItem("compassStyle");
   const savedCardinalOffset = localStorage.getItem("cardinalOffset");
@@ -1935,19 +2077,32 @@ function renderWeather(data) {
     const wind  = Math.round(d.hourly.windspeed_10m[i]);
     const temp  = Math.round(d.hourly.temperature_2m[i]);
     const humid = Math.round(d.hourly.relative_humidity_2m[i]);
-    const danger = rain > 70 || wind >= WIND_ALERT_MPH || temp >= HEAT_ALERT_F;
+
+    /* Per-field alerts */
+    const heatAlert = fcHeatAlertOn && temp >= HEAT_ALERT_F;
+    const coldAlert = fcColdAlertOn && temp <= fcColdAlertVal;
+    const rainAlert = fcRainAlertOn && rain >= fcRainAlertVal;
+    const windAlert = fcWindAlertOn && wind >= WIND_ALERT_MPH;
+    const anyAlert  = heatAlert || coldAlert || rainAlert || windAlert;
+
+    let tempClass = "";
+    if (heatAlert) tempClass = "danger";
+    else if (coldAlert) tempClass = "cold-alert";
 
     const card = document.createElement("div");
     card.className = "card";
     card.classList.add(getWeatherClass(code, isNightHour(d.hourly.time[i])));
+
+    const tempEl      = fcShowTemp      ? `<div class="tempF ${tempClass}">${temp}°${coldAlert ? " ❄" : ""}</div>` : "";
+    const humidEl     = fcShowHumidity  ? `<div class="humidity">${humid}% Humidity</div>` : "";
+    const rainEl      = fcShowRain      ? `<div class="rain ${rainAlert ? "danger" : ""}">${rain}% Rain</div>` : "";
+    const windEl      = fcShowWind      ? `<div class="windMini ${windAlert ? "danger" : ""}">${wind} mph</div>` : "";
+    const conditionEl = fcShowCondition ? `<div class="dirMini">${weatherText(code)}</div>` : "";
+    const alertEl     = anyAlert        ? `<div class="boxAlert">!</div>` : "";
+
     card.innerHTML = `
       <div class="hour">${hourText}</div>
-      <div class="tempF ${danger ? "danger" : ""}">${temp}°</div>
-      <div class="humidity">${humid}% Humidity</div>
-      <div class="rain">${rain}% Rain</div>
-      <div class="windMini">${wind} mph</div>
-      <div class="dirMini">${weatherText(code)}</div>
-      ${danger ? `<div class="boxAlert">Alert</div>` : ""}
+      ${tempEl}${humidEl}${rainEl}${windEl}${conditionEl}${alertEl}
     `;
     wrap.appendChild(card);
   }
@@ -2314,8 +2469,12 @@ function drawTide(series) {
       currentTideEl.innerText =
         `Tide for ${selectedTideDate} at ${selectedStation.name}: ${formatTideReadout(nowMs, nowValue)}`;
     }
-    currentTideEl.style.color    = nowValue <= LOW_TIDE_ALERT_FT ? "#ff6a6a" : "#dff6ff";
-    lowTideAlertEl.textContent   = nowValue <= LOW_TIDE_ALERT_FT ? "ALERT: LOW TIDE" : "";
+    const tideIsLow  = tideChartLowAlertOn  && nowValue <= LOW_TIDE_ALERT_FT;
+    const tideIsHigh = tideChartHighAlertOn && nowValue >= HIGH_TIDE_ALERT_FT;
+    const tideAlert  = tideIsLow || tideIsHigh;
+    currentTideEl.style.color    = (tideStatusColorAlert && tideAlert) ? "#ff6a6a" : "#dff6ff";
+    lowTideAlertEl.textContent   = tideIsLow  ? "⚠ LOW TIDE"  :
+                                   tideIsHigh ? "⚠ HIGH TIDE" : "";
   } else {
     currentTideEl.innerText      = "";
     currentTideEl.style.color    = "#dff6ff";
