@@ -11,7 +11,7 @@ const STORAGE_KEY = "marineDashboardLayoutV2";
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
-const DEFAULT_LAYOUT = {"layout":{"left":"10px","top":"10px","width":"620px","height":"120px"},"wind":{"left":"10px","top":"148px","width":"580px","height":"380px"},"temp":{"left":"608px","top":"148px","width":"340px","height":"140px"},"tideStatus":{"left":"608px","top":"298px","width":"340px","height":"100px"},"forecast":{"left":"10px","top":"548px","width":"1900px","height":"270px"},"tideChart":{"left":"10px","top":"836px","width":"1900px","height":"240px"}};
+const DEFAULT_LAYOUT = {"layout":{"left":"10px","top":"10px","width":"620px","height":"120px"},"wind":{"left":"1254px","top":"5px","width":"653px","height":"392px"},"temp":{"left":"758px","top":"11px","width":"313px","height":"112px"},"tideStatus":{"left":"433px","top":"316px","width":"981px","height":"91px"},"forecast":{"left":"10px","top":"391px","width":"1900px","height":"270px"},"tideChart":{"left":"-8px","top":"661px","width":"1919px","height":"278px"}};
 
 const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"wind":{"theme":"clean"},"temp":{"theme":"clean"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0}};
 
