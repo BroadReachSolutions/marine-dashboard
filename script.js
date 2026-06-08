@@ -2872,8 +2872,79 @@ function updateCompassMap() {
 
     if (iframe.src !== newSrc) iframe.src = newSrc;
     iframe.style.cssText = "display:block;position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:inherit;z-index:10;";
+
+    /* ── Ring + arrow overlay on top of radar ── */
+    let radarOverlay = document.getElementById("radarRingOverlay");
+    if (!radarOverlay) {
+      radarOverlay = document.createElement("div");
+      radarOverlay.id = "radarRingOverlay";
+      widgetEl2.appendChild(radarOverlay);
+    }
+    radarOverlay.innerHTML = "";
+    radarOverlay.style.cssText = "pointer-events:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:20;";
+
+    if (compassStyle !== "none") {
+      const origRing  = document.getElementById("compassRing");
+      const origArrow = document.getElementById("windArrow");
+      const wW = widgetEl2.offsetWidth;
+      const wH = widgetEl2.offsetHeight;
+      const sz = Math.min(wW, wH) * 0.80;
+      const cx = wW / 2;
+      const cy = wH / 2;
+
+      if (origRing) {
+        const ringDiv = document.createElement("div");
+        ringDiv.id = "radarRingClone";
+        const rs = getComputedStyle(origRing);
+        ringDiv.style.cssText = [
+          "position:absolute",
+          "border-radius:50%",
+          "box-sizing:border-box",
+          "width:" + sz + "px",
+          "height:" + sz + "px",
+          "top:" + (cy - sz/2) + "px",
+          "left:" + (cx - sz/2) + "px",
+          "border:" + rs.border,
+          "box-shadow:" + rs.boxShadow,
+        ].join(";");
+        if (compassStyle === "crosshair") {
+          ringDiv.style.borderColor = "rgba(160,220,255,0.5)";
+          /* crosshair lines */
+          const hLine = document.createElement("div");
+          hLine.style.cssText = "position:absolute;height:1px;width:100%;top:50%;left:0;background:rgba(160,220,255,0.3);";
+          const vLine = document.createElement("div");
+          vLine.style.cssText = "position:absolute;width:1px;height:100%;left:50%;top:0;background:rgba(160,220,255,0.3);";
+          ringDiv.appendChild(hLine);
+          ringDiv.appendChild(vLine);
+        }
+        radarOverlay.appendChild(ringDiv);
+      }
+
+      /* Arrow — copy transform from original */
+      if (origArrow) {
+        const arrowDiv = document.createElement("div");
+        arrowDiv.id = "radarArrowClone";
+        const origStyle = origArrow.getAttribute("style") || "";
+        arrowDiv.setAttribute("style", origStyle);
+        arrowDiv.style.position  = "absolute";
+        arrowDiv.style.width     = sz + "px";
+        arrowDiv.style.height    = sz + "px";
+        arrowDiv.style.top       = (cy - sz/2) + "px";
+        arrowDiv.style.left      = (cx - sz/2) + "px";
+        /* Preserve rotation but remove translate */
+        const rotMatch = origArrow.style.transform ? origArrow.style.transform.match(/rotate\([^)]+\)/) : null;
+        arrowDiv.style.transform = rotMatch ? rotMatch[0] : "";
+        arrowDiv.className = origArrow.className;
+        arrowDiv.innerHTML = origArrow.innerHTML;
+        radarOverlay.appendChild(arrowDiv);
+      }
+    }
     return;
   }
+
+  /* Hide radar ring overlay when leaving radar mode */
+  const existingOverlay = document.getElementById("radarRingOverlay");
+  if (existingOverlay) existingOverlay.style.display = "none";
 
   /* ── SATELLITE MODES: hide iframe, draw canvas ── */
   hideIframe();
