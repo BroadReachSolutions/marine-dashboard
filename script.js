@@ -1838,7 +1838,17 @@ function attachCompassSettingsEvents() {
       compassMapMode = modeSelect.value;
       localStorage.setItem("compassMapMode", compassMapMode);
       updateRadarRow();
+      /* If switching away from radar, clean up overlay */
+      if (compassMapMode !== "radar") {
+        const ov = document.getElementById("radarOverlayCanvas");
+        if (ov) ov.style.display = "none";
+        stopRadarAnimation();
+      }
       updateCompassMap();
+      /* Immediately draw overlay if switching to radar */
+      if (compassMapMode === "radar") {
+        setTimeout(refreshRadarOverlay, 100);
+      }
     });
     updateRadarRow();
   }
@@ -2001,6 +2011,12 @@ function makeSettingsPanelsDraggable() {
 
 
 /* Draw compass ring, arrow and wind info onto the radar overlay canvas */
+function refreshRadarOverlay() {
+  if (compassMapMode !== "radar") return;
+  const canvas = document.getElementById("radarOverlayCanvas");
+  if (canvas) drawRadarCompassOverlay(canvas);
+}
+
 function drawRadarCompassOverlay(canvas) {
   if (!canvas) return;
   const W   = canvas.width;
@@ -2008,21 +2024,21 @@ function drawRadarCompassOverlay(canvas) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
-  const cx   = W / 2;
-  const cy   = H / 2;
-  const r    = Math.min(W, H) * 0.38; /* radius of compass ring */
-  const deg  = lastWindDeg || 0;
-  const rad  = (deg - 90) * Math.PI / 180;
+  const cx  = W / 2;
+  const cy  = H / 2;
+  const r   = Math.min(W, H) * 0.28;  /* smaller ring */
+  const deg = lastWindDeg || 0;
+  const rad = (deg - 90) * Math.PI / 180;
 
   /* ── Ring ── */
   if (compassStyle !== "none") {
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(20, 40, 60, 0.82)";
-    ctx.lineWidth   = 8;
+    ctx.strokeStyle = "rgba(10, 25, 40, 0.85)";
+    ctx.lineWidth   = 9;
     ctx.stroke();
-    ctx.strokeStyle = "rgba(160, 220, 255, 0.85)";
+    ctx.strokeStyle = "rgba(160, 220, 255, 0.90)";
     ctx.lineWidth   = 3;
     ctx.stroke();
     ctx.restore();
@@ -2035,43 +2051,59 @@ function drawRadarCompassOverlay(canvas) {
       ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
       ctx.restore();
     }
+
+    /* Cardinal letters just outside the ring */
+    const cardinals = [["N",0],["E",90],["S",180],["W",270]];
+    ctx.save();
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    cardinals.forEach(([ltr, a]) => {
+      const cr  = (a - 90) * Math.PI / 180;
+      const lx  = cx + Math.cos(cr) * (r + 16);
+      const ly  = cy + Math.sin(cr) * (r + 16);
+      ctx.shadowColor = "rgba(0,0,0,0.95)";
+      ctx.shadowBlur  = 5;
+      ctx.fillStyle   = "#ffffff";
+      ctx.fillText(ltr, lx, ly);
+    });
+    ctx.restore();
   }
 
-  /* ── Arrow ── */
-  const arrowLen  = r * 0.72;
-  const arrowW    = 7;
+  /* ── Arrow: starts at center, points outward to ring edge ── */
+  const arrowLen = r * 0.88;   /* reaches near the ring edge */
   const tipX  = cx + Math.cos(rad) * arrowLen;
   const tipY  = cy + Math.sin(rad) * arrowLen;
-  const tailX = cx - Math.cos(rad) * (arrowLen * 0.45);
-  const tailY = cy - Math.sin(rad) * (arrowLen * 0.45);
 
   ctx.save();
-  ctx.shadowColor = "rgba(255,120,80,0.7)";
+  ctx.shadowColor = "rgba(255,110,70,0.75)";
   ctx.shadowBlur  = 10;
-  /* Arrow shaft */
-  const grd = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
-  grd.addColorStop(0, "#ff7b54");
-  grd.addColorStop(1, "#ffb08a");
-  ctx.strokeStyle = grd;
-  ctx.lineWidth   = arrowW;
+  /* shaft from center to tip */
+  ctx.strokeStyle = "#ff8060";
+  ctx.lineWidth   = 5;
   ctx.lineCap     = "round";
   ctx.beginPath();
-  ctx.moveTo(tailX, tailY);
+  ctx.moveTo(cx, cy);
   ctx.lineTo(tipX, tipY);
   ctx.stroke();
-  /* Arrowhead */
-  const headLen = 18;
-  const headAng = 0.45;
-  ctx.fillStyle = "#ffb08a";
+  /* arrowhead */
+  const hLen = 14;
+  const hAng = 0.42;
+  ctx.fillStyle = "#ffaa80";
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
-  ctx.lineTo(tipX - headLen * Math.cos(rad - headAng), tipY - headLen * Math.sin(rad - headAng));
-  ctx.lineTo(tipX - headLen * Math.cos(rad + headAng), tipY - headLen * Math.sin(rad + headAng));
+  ctx.lineTo(tipX - hLen*Math.cos(rad-hAng), tipY - hLen*Math.sin(rad-hAng));
+  ctx.lineTo(tipX - hLen*Math.cos(rad+hAng), tipY - hLen*Math.sin(rad+hAng));
   ctx.closePath();
+  ctx.fill();
+  /* small center dot */
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI*2);
+  ctx.fillStyle = "#ff8060";
   ctx.fill();
   ctx.restore();
 
-  /* ── Wind speed + direction text — dark pill background for readability ── */
+  /* ── Wind info pill — bottom left of widget ── */
   const mph   = lastWindMph || 0;
   const kph   = Math.round(mph * 1.60934);
   const knots = Math.round(mph * 0.868976);
@@ -2081,59 +2113,36 @@ function drawRadarCompassOverlay(canvas) {
   if (showWindMph)   parts.push(mph + " mph");
   if (showWindKph)   parts.push(kph + " kph");
   if (showWindKnots) parts.push(knots + " kts");
-  if (showWindDir)   parts.push(dir + " " + deg + "°");
+  if (showWindDir)   parts.push(dir + "  " + deg + "°");
 
   if (parts.length) {
-    const line1 = parts.slice(0, Math.ceil(parts.length / 2)).join("  |  ");
-    const line2 = parts.slice(Math.ceil(parts.length / 2)).join("  |  ");
-    const lines = [line1, line2].filter(Boolean);
-
     ctx.save();
-    ctx.font      = "bold 18px sans-serif";
-    ctx.textAlign = "center";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
-    const lineH  = 26;
-    const padX   = 16;
-    const padY   = 10;
-    const boxW   = Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2;
-    const boxH   = lines.length * lineH + padY * 2;
-    const boxX   = cx - boxW / 2;
-    const boxY   = cy + r + 14;
+    const lineH = 24;
+    const padX  = 12;
+    const padY  = 8;
+    const boxW  = Math.max(...parts.map(p => ctx.measureText(p).width)) + padX * 2;
+    const boxH  = parts.length * lineH + padY * 2;
+    const boxX  = 12;
+    const boxY  = H - boxH - 12;
 
-    /* Dark pill */
-    ctx.fillStyle = "rgba(5, 15, 25, 0.80)";
+    ctx.fillStyle = "rgba(5,15,25,0.82)";
     ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+    ctx.roundRect(boxX, boxY, boxW, boxH, 8);
     ctx.fill();
-    ctx.strokeStyle = "rgba(160,220,255,0.35)";
+    ctx.strokeStyle = "rgba(160,220,255,0.3)";
     ctx.lineWidth   = 1;
     ctx.stroke();
 
-    /* Text */
     ctx.fillStyle = "#d0ecff";
-    lines.forEach((line, i) => {
-      ctx.fillText(line, cx, boxY + padY + lineH * (i + 0.75));
+    parts.forEach((p, i) => {
+      ctx.fillText(p, boxX + padX, boxY + padY + lineH * (i + 0.5));
     });
     ctx.restore();
   }
-
-  /* ── Cardinal letters ── */
-  const cardinals = [["N", 0], ["E", 90], ["S", 180], ["W", 270]];
-  ctx.save();
-  ctx.font      = "bold 15px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  cardinals.forEach(([ltr, a]) => {
-    const cr = (a - 90) * Math.PI / 180;
-    const cx2 = cx + Math.cos(cr) * (r + 18);
-    const cy2 = cy + Math.sin(cr) * (r + 18);
-    /* shadow for readability */
-    ctx.shadowColor = "rgba(0,0,0,0.9)";
-    ctx.shadowBlur  = 6;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(ltr, cx2, cy2);
-  });
-  ctx.restore();
 }
 
 async function geocodeMarineAddress(address) {
@@ -3018,6 +3027,7 @@ function updateCompassMap() {
       radarOverlay.style.cssText = "pointer-events:none;position:absolute;top:0;left:0;z-index:20;";
       widgetEl2.appendChild(radarOverlay);
     }
+    radarOverlay.style.display = "block";
     radarOverlay.width  = widgetEl2.offsetWidth;
     radarOverlay.height = widgetEl2.offsetHeight;
     radarOverlay.style.width  = widgetEl2.offsetWidth  + "px";
@@ -3102,6 +3112,12 @@ function drawMapTiles(canvas, w, h) {
 
 
 /* Draw compass ring, arrow and wind info onto the radar overlay canvas */
+function refreshRadarOverlay() {
+  if (compassMapMode !== "radar") return;
+  const canvas = document.getElementById("radarOverlayCanvas");
+  if (canvas) drawRadarCompassOverlay(canvas);
+}
+
 function drawRadarCompassOverlay(canvas) {
   if (!canvas) return;
   const W   = canvas.width;
@@ -3109,21 +3125,21 @@ function drawRadarCompassOverlay(canvas) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
-  const cx   = W / 2;
-  const cy   = H / 2;
-  const r    = Math.min(W, H) * 0.38; /* radius of compass ring */
-  const deg  = lastWindDeg || 0;
-  const rad  = (deg - 90) * Math.PI / 180;
+  const cx  = W / 2;
+  const cy  = H / 2;
+  const r   = Math.min(W, H) * 0.28;  /* smaller ring */
+  const deg = lastWindDeg || 0;
+  const rad = (deg - 90) * Math.PI / 180;
 
   /* ── Ring ── */
   if (compassStyle !== "none") {
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(20, 40, 60, 0.82)";
-    ctx.lineWidth   = 8;
+    ctx.strokeStyle = "rgba(10, 25, 40, 0.85)";
+    ctx.lineWidth   = 9;
     ctx.stroke();
-    ctx.strokeStyle = "rgba(160, 220, 255, 0.85)";
+    ctx.strokeStyle = "rgba(160, 220, 255, 0.90)";
     ctx.lineWidth   = 3;
     ctx.stroke();
     ctx.restore();
@@ -3136,43 +3152,59 @@ function drawRadarCompassOverlay(canvas) {
       ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
       ctx.restore();
     }
+
+    /* Cardinal letters just outside the ring */
+    const cardinals = [["N",0],["E",90],["S",180],["W",270]];
+    ctx.save();
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    cardinals.forEach(([ltr, a]) => {
+      const cr  = (a - 90) * Math.PI / 180;
+      const lx  = cx + Math.cos(cr) * (r + 16);
+      const ly  = cy + Math.sin(cr) * (r + 16);
+      ctx.shadowColor = "rgba(0,0,0,0.95)";
+      ctx.shadowBlur  = 5;
+      ctx.fillStyle   = "#ffffff";
+      ctx.fillText(ltr, lx, ly);
+    });
+    ctx.restore();
   }
 
-  /* ── Arrow ── */
-  const arrowLen  = r * 0.72;
-  const arrowW    = 7;
+  /* ── Arrow: starts at center, points outward to ring edge ── */
+  const arrowLen = r * 0.88;   /* reaches near the ring edge */
   const tipX  = cx + Math.cos(rad) * arrowLen;
   const tipY  = cy + Math.sin(rad) * arrowLen;
-  const tailX = cx - Math.cos(rad) * (arrowLen * 0.45);
-  const tailY = cy - Math.sin(rad) * (arrowLen * 0.45);
 
   ctx.save();
-  ctx.shadowColor = "rgba(255,120,80,0.7)";
+  ctx.shadowColor = "rgba(255,110,70,0.75)";
   ctx.shadowBlur  = 10;
-  /* Arrow shaft */
-  const grd = ctx.createLinearGradient(tailX, tailY, tipX, tipY);
-  grd.addColorStop(0, "#ff7b54");
-  grd.addColorStop(1, "#ffb08a");
-  ctx.strokeStyle = grd;
-  ctx.lineWidth   = arrowW;
+  /* shaft from center to tip */
+  ctx.strokeStyle = "#ff8060";
+  ctx.lineWidth   = 5;
   ctx.lineCap     = "round";
   ctx.beginPath();
-  ctx.moveTo(tailX, tailY);
+  ctx.moveTo(cx, cy);
   ctx.lineTo(tipX, tipY);
   ctx.stroke();
-  /* Arrowhead */
-  const headLen = 18;
-  const headAng = 0.45;
-  ctx.fillStyle = "#ffb08a";
+  /* arrowhead */
+  const hLen = 14;
+  const hAng = 0.42;
+  ctx.fillStyle = "#ffaa80";
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
-  ctx.lineTo(tipX - headLen * Math.cos(rad - headAng), tipY - headLen * Math.sin(rad - headAng));
-  ctx.lineTo(tipX - headLen * Math.cos(rad + headAng), tipY - headLen * Math.sin(rad + headAng));
+  ctx.lineTo(tipX - hLen*Math.cos(rad-hAng), tipY - hLen*Math.sin(rad-hAng));
+  ctx.lineTo(tipX - hLen*Math.cos(rad+hAng), tipY - hLen*Math.sin(rad+hAng));
   ctx.closePath();
+  ctx.fill();
+  /* small center dot */
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI*2);
+  ctx.fillStyle = "#ff8060";
   ctx.fill();
   ctx.restore();
 
-  /* ── Wind speed + direction text — dark pill background for readability ── */
+  /* ── Wind info pill — bottom left of widget ── */
   const mph   = lastWindMph || 0;
   const kph   = Math.round(mph * 1.60934);
   const knots = Math.round(mph * 0.868976);
@@ -3182,59 +3214,36 @@ function drawRadarCompassOverlay(canvas) {
   if (showWindMph)   parts.push(mph + " mph");
   if (showWindKph)   parts.push(kph + " kph");
   if (showWindKnots) parts.push(knots + " kts");
-  if (showWindDir)   parts.push(dir + " " + deg + "°");
+  if (showWindDir)   parts.push(dir + "  " + deg + "°");
 
   if (parts.length) {
-    const line1 = parts.slice(0, Math.ceil(parts.length / 2)).join("  |  ");
-    const line2 = parts.slice(Math.ceil(parts.length / 2)).join("  |  ");
-    const lines = [line1, line2].filter(Boolean);
-
     ctx.save();
-    ctx.font      = "bold 18px sans-serif";
-    ctx.textAlign = "center";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
-    const lineH  = 26;
-    const padX   = 16;
-    const padY   = 10;
-    const boxW   = Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2;
-    const boxH   = lines.length * lineH + padY * 2;
-    const boxX   = cx - boxW / 2;
-    const boxY   = cy + r + 14;
+    const lineH = 24;
+    const padX  = 12;
+    const padY  = 8;
+    const boxW  = Math.max(...parts.map(p => ctx.measureText(p).width)) + padX * 2;
+    const boxH  = parts.length * lineH + padY * 2;
+    const boxX  = 12;
+    const boxY  = H - boxH - 12;
 
-    /* Dark pill */
-    ctx.fillStyle = "rgba(5, 15, 25, 0.80)";
+    ctx.fillStyle = "rgba(5,15,25,0.82)";
     ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+    ctx.roundRect(boxX, boxY, boxW, boxH, 8);
     ctx.fill();
-    ctx.strokeStyle = "rgba(160,220,255,0.35)";
+    ctx.strokeStyle = "rgba(160,220,255,0.3)";
     ctx.lineWidth   = 1;
     ctx.stroke();
 
-    /* Text */
     ctx.fillStyle = "#d0ecff";
-    lines.forEach((line, i) => {
-      ctx.fillText(line, cx, boxY + padY + lineH * (i + 0.75));
+    parts.forEach((p, i) => {
+      ctx.fillText(p, boxX + padX, boxY + padY + lineH * (i + 0.5));
     });
     ctx.restore();
   }
-
-  /* ── Cardinal letters ── */
-  const cardinals = [["N", 0], ["E", 90], ["S", 180], ["W", 270]];
-  ctx.save();
-  ctx.font      = "bold 15px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  cardinals.forEach(([ltr, a]) => {
-    const cr = (a - 90) * Math.PI / 180;
-    const cx2 = cx + Math.cos(cr) * (r + 18);
-    const cy2 = cy + Math.sin(cr) * (r + 18);
-    /* shadow for readability */
-    ctx.shadowColor = "rgba(0,0,0,0.9)";
-    ctx.shadowBlur  = 6;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(ltr, cx2, cy2);
-  });
-  ctx.restore();
 }
 
 async function geocodeMarineAddress(address) {
