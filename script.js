@@ -644,6 +644,23 @@ function setupWidgetSettingsSystem() {
         if (!isOpen) {
           widget.classList.add("show-settings");
 
+          /* Always detach immediately — no inline open step */
+          const settingsPanelForDetach = widget.querySelector(".widgetSettingsPanel");
+          if (settingsPanelForDetach && !settingsPanelForDetach.classList.contains("is-detached")) {
+            const rect = settingsPanelForDetach.getBoundingClientRect();
+            const wRect = widget.getBoundingClientRect();
+            document.body.appendChild(settingsPanelForDetach);
+            settingsPanelForDetach.style.position  = "fixed";
+            settingsPanelForDetach.style.left      = Math.min(wRect.right + 8, window.innerWidth - 280) + "px";
+            settingsPanelForDetach.style.top       = Math.max(wRect.top, 10) + "px";
+            settingsPanelForDetach.style.right     = "auto";
+            settingsPanelForDetach.style.width     = "260px";
+            settingsPanelForDetach.style.maxHeight = "80vh";
+            settingsPanelForDetach.style.zIndex    = "99999";
+            settingsPanelForDetach.style.display   = "block";
+            settingsPanelForDetach.classList.add("is-detached");
+          }
+
           /* On mobile: make the settings panel draggable by its header */
           if (isMobile() && settingsPanel) {
             /* Reset position each time it opens */
@@ -1209,15 +1226,21 @@ function attachEvents() {
   _num("tempColdAlertVal", v => { COLD_ALERT_F     = v; if (_lastWeatherData) renderCurrentConditions(_lastWeatherData); });
 
   /* Forecast */
-  _chk("fcShowTemp",      v => { fcShowTemp      = v; renderWeather(null); });
-  _chk("fcShowHumidity",  v => { fcShowHumidity  = v; renderWeather(null); });
-  _chk("fcShowRain",      v => { fcShowRain      = v; renderWeather(null); });
-  _chk("fcShowWind",      v => { fcShowWind      = v; renderWeather(null); });
-  _chk("fcShowCondition", v => { fcShowCondition = v; renderWeather(null); });
-  _chk("fcHeatAlertOn",   v => { fcHeatAlertOn   = v; renderWeather(null); });
-  _chk("fcColdAlertOn",   v => { fcColdAlertOn   = v; renderWeather(null); });
-  _chk("fcRainAlertOn",   v => { fcRainAlertOn   = v; renderWeather(null); });
-  _chk("fcWindAlertOn",   v => { fcWindAlertOn   = v; renderWeather(null); });
+  function reRenderForecast() {
+    /* Force re-render by clearing the cached key */
+    const wrap = document.getElementById("forecast");
+    if (wrap) wrap.dataset.renderedKey = "";
+    renderWeather(null);
+  }
+  _chk("fcShowTemp",      v => { fcShowTemp      = v; reRenderForecast(); });
+  _chk("fcShowHumidity",  v => { fcShowHumidity  = v; reRenderForecast(); });
+  _chk("fcShowRain",      v => { fcShowRain      = v; reRenderForecast(); });
+  _chk("fcShowWind",      v => { fcShowWind      = v; reRenderForecast(); });
+  _chk("fcShowCondition", v => { fcShowCondition = v; reRenderForecast(); });
+  _chk("fcHeatAlertOn",   v => { fcHeatAlertOn   = v; reRenderForecast(); });
+  _chk("fcColdAlertOn",   v => { fcColdAlertOn   = v; reRenderForecast(); });
+  _chk("fcRainAlertOn",   v => { fcRainAlertOn   = v; reRenderForecast(); });
+  _chk("fcWindAlertOn",   v => { fcWindAlertOn   = v; reRenderForecast(); });
   _num("fcHeatAlertVal",  v => { HEAT_ALERT_F    = v; renderWeather(null); });
   _num("fcColdAlertVal",  v => { fcColdAlertVal  = v; renderWeather(null); });
   _num("fcRainAlertVal",  v => { fcRainAlertVal  = v; renderWeather(null); });
