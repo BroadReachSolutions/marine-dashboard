@@ -1675,7 +1675,7 @@ async function loadMarineLocation() {
     ["tideChartLowAlertVal", LOW_TIDE_ALERT_FT], ["tideChartHighAlertVal", HIGH_TIDE_ALERT_FT],
   ].forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
 
-  const savedMode = localStorage.getItem("compassMapMode");  const savedMode = localStorage.getItem("compassMapMode");
+  const savedMode = localStorage.getItem("compassMapMode");
   const savedSize = localStorage.getItem("compassSize");
   const savedStyle = localStorage.getItem("compassStyle");
   const savedCardinalOffset = localStorage.getItem("cardinalOffset");
