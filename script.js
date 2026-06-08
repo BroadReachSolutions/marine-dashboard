@@ -148,6 +148,7 @@ async function init() {
   initializeDatePicker();
 
   loadAllSettings();
+  loadNewWidgetSettings();
   applyAllWidgetSettings();
 
   attachCompassSettingsEvents();
@@ -1619,13 +1620,8 @@ function updateCompassMap() {
 }
 
 
-async function loadMarineLocation() {
-  const lat = localStorage.getItem("marineLocationLat");
-  const lon = localStorage.getItem("marineLocationLon");
-  const address = localStorage.getItem("marineLocationAddress");
-  const savedZoom = localStorage.getItem("compassZoom");
-  /* ── New widget settings ── */
-  const _b = k => localStorage.getItem(k) !== "0"; /* default true */
+/* Load all new widget settings from localStorage */
+function loadNewWidgetSettings() {
   const _n = (k, def) => parseFloat(localStorage.getItem(k) || def);
 
   tempShowTemp         = localStorage.getItem("tempShowTemp")    !== "0";
@@ -1649,13 +1645,13 @@ async function loadMarineLocation() {
   fcWindAlertOn        = localStorage.getItem("fcWindAlertOn")   !== "0";
   WIND_ALERT_MPH       = _n("fcWindAlertVal", 25);
 
-  tideStatusColorAlert  = localStorage.getItem("tideStatusColorAlert") !== "0";
-  tideChartLowAlertOn   = localStorage.getItem("tideChartLowAlertOn")  !== "0";
-  tideChartHighAlertOn  = localStorage.getItem("tideChartHighAlertOn") === "1";
-  LOW_TIDE_ALERT_FT     = _n("tideChartLowAlertVal",  0.4);
-  HIGH_TIDE_ALERT_FT    = _n("tideChartHighAlertVal", 5.0);
+  tideStatusColorAlert = localStorage.getItem("tideStatusColorAlert") !== "0";
+  tideChartLowAlertOn  = localStorage.getItem("tideChartLowAlertOn")  !== "0";
+  tideChartHighAlertOn = localStorage.getItem("tideChartHighAlertOn") === "1";
+  LOW_TIDE_ALERT_FT    = _n("tideChartLowAlertVal",  0.4);
+  HIGH_TIDE_ALERT_FT   = _n("tideChartHighAlertVal", 5.0);
 
-  /* Sync controls */
+  /* Sync checkbox controls */
   [
     ["tempShowTemp", tempShowTemp], ["tempShowHumidity", tempShowHumidity],
     ["tempShowCelsius", tempShowCelsius], ["tempHeatAlertOn", tempHeatAlertOn],
@@ -1668,13 +1664,20 @@ async function loadMarineLocation() {
     ["tideChartLowAlertOn", tideChartLowAlertOn], ["tideChartHighAlertOn", tideChartHighAlertOn],
   ].forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.checked = val; });
 
+  /* Sync number inputs */
   [
     ["tempHeatAlertVal", HEAT_ALERT_F], ["tempColdAlertVal", COLD_ALERT_F],
     ["fcHeatAlertVal", HEAT_ALERT_F], ["fcColdAlertVal", fcColdAlertVal],
     ["fcRainAlertVal", fcRainAlertVal], ["fcWindAlertVal", WIND_ALERT_MPH],
     ["tideChartLowAlertVal", LOW_TIDE_ALERT_FT], ["tideChartHighAlertVal", HIGH_TIDE_ALERT_FT],
   ].forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
+}
 
+async function loadMarineLocation() {
+  const lat = localStorage.getItem("marineLocationLat");
+  const lon = localStorage.getItem("marineLocationLon");
+  const address = localStorage.getItem("marineLocationAddress");
+  const savedZoom = localStorage.getItem("compassZoom");
   const savedMode = localStorage.getItem("compassMapMode");
   const savedSize = localStorage.getItem("compassSize");
   const savedStyle = localStorage.getItem("compassStyle");
