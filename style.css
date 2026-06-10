@@ -1194,7 +1194,7 @@ body.layout-edit .widget.theme-clean {
   display: none !important;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
 
   /* Make the dashboard a normal scrollable page instead of a scaled canvas */
   body {
@@ -1817,7 +1817,7 @@ body.layout-edit .widget.theme-clean {
 
 
 /* Mobile control panel styling */
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   #layoutWidget .controlPanel {
     padding: 10px 10px 6px 10px;
     background: rgba(8, 20, 30, 0.85);

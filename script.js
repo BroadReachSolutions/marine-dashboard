@@ -62,9 +62,7 @@ const WEATHER_HOURS = 12;
 
 /* ---- Mobile detection ---- */
 function isMobile() {
-  /* Use multiple signals — some Android phones report > 768px innerWidth */
-  return window.innerWidth < 1024 &&
-    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  return window.innerWidth <= 960 || ('ontouchstart' in window && window.innerWidth < 1200);
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
@@ -192,23 +190,7 @@ async function init() {
     }
   });
 
-  /* Mobile diagnostic — shows for 8 seconds then disappears */
-  if (isMobile()) {
-    const diag = document.createElement("div");
-    diag.style.cssText = "position:fixed;top:60px;left:0;right:0;z-index:999999;background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px;font-family:monospace;";
-    const dashboard = document.getElementById("dashboard");
-    const wind = document.getElementById("windWidget");
-    diag.textContent = [
-      "isMobile: " + isMobile(),
-      "is-mobile class: " + document.body.classList.contains("is-mobile"),
-      "dashboard pos: " + (dashboard ? dashboard.style.position || "none" : "null"),
-      "dashboard transform: " + (dashboard ? (dashboard.style.transform || "none") : "null"),
-      "wind left: " + (wind ? (wind.style.left || "none") : "null"),
-      "wind display: " + (wind ? getComputedStyle(wind).display : "null"),
-    ].join(" | ");
-    document.body.appendChild(diag);
-    setTimeout(() => diag.remove(), 10000);
-  }
+
 }
 
 /* Hide widgets that clutter the mobile view.
