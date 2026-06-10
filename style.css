@@ -1435,18 +1435,19 @@ body.layout-edit .widget.theme-clean {
     color: #eef7ff !important;
   }
 
-  /* New order: wind/compass → forecast → tide → stations */
-  #windWidget      { order: 1; height: 320px !important; }
-  #forecastWidget  { order: 2; height: 220px !important; }
-  #tideStatusWidget{ order: 3; height: 80px !important; }
-  #layoutWidget    { order: 5; height: auto !important; }
-  #tideChartWidget {
+  /* Mobile order: wind → forecast → tideStatus → tideChart → station controls */
+  #windWidget       { order: 1; height: 320px !important; }
+  #forecastWidget   { order: 2; height: 220px !important; }
+  #tideStatusWidget { order: 3; height: 80px !important; }
+  #tideChartWidget  {
     order: 4;
     height: 220px !important;
     padding: 0 !important;
     border-radius: 10px !important;
     overflow: hidden !important;
   }
+  #layoutWidget     { order: 5; height: auto !important; }
+  #tempWidget       { order: 6; height: 100px !important; display: flex !important; }
 
   #tideChartWidget .tideSection,
   #tideChartWidget .tidePanel {
@@ -1462,11 +1463,7 @@ body.layout-edit .widget.theme-clean {
     height: 100% !important;
     border-radius: 0 !important;
   }
-  #stationsWidget  { order: 5; }
-  #layoutWidget    { order: 6; }
 
-  /* Hide temp widget on mobile — data shown inside wind widget */
-  #tempWidget { display: none !important; }
 
   /* Stations bar — stack controls vertically on narrow screens */
   .stationPanel {
