@@ -62,7 +62,9 @@ const WEATHER_HOURS = 12;
 
 /* ---- Mobile detection ---- */
 function isMobile() {
-  return window.innerWidth < 768;
+  /* Use multiple signals — some Android phones report > 768px innerWidth */
+  return window.innerWidth < 1024 &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
