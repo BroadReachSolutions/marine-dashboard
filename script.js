@@ -61,11 +61,9 @@ let nearbyStations = [...LOCAL_STATIONS];
 const WEATHER_HOURS = 12;
 
 /* ---- Mobile detection ---- */
-/* Set once at startup — true if device has a touchscreen */
-const _isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
+/* isMobile: matches the CSS @media query exactly */
 function isMobile() {
-  return _isMobileDevice;
+  return window.matchMedia("(max-width: 767px), (max-width: 1400px) and (pointer: coarse)").matches;
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
