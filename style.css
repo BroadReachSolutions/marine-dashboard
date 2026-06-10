@@ -1387,8 +1387,32 @@ body.layout-edit .widget.theme-clean {
     padding-top: 66px !important;
   }
 
-  /* Hide the layoutWidget itself — button is in the header */
+  /* Show layoutWidget on mobile but hide the edit button (it's in the header) */
   #layoutWidget {
+    display: block !important;
+    order: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  #layoutWidget .widgetFrame::before {
+    display: none !important;
+  }
+
+  #layoutWidget .ctrlBtnEdit,
+  #layoutWidget .widgetHandle,
+  #layoutWidget .widgetResize {
+    display: none !important;
+  }
+
+  #layoutWidget .controlBtns {
+    display: flex;
+  }
+
+  /* Hide View Day / Return to Live buttons on mobile — use tide date only */
+  #layoutWidget #viewDateBtn,
+  #layoutWidget #liveViewBtn {
     display: none !important;
   }
 
@@ -1782,4 +1806,27 @@ body.layout-edit .widget.theme-clean {
   color: var(--row2-color, #9fc2d9);
   font-family: var(--row1-font);
   margin-top: 4px;
+}
+
+
+/* Mobile control panel styling */
+@media (max-width: 767px) {
+  #layoutWidget .controlPanel {
+    padding: 10px 10px 6px 10px;
+    background: rgba(8, 20, 30, 0.85);
+    border-radius: 12px;
+    border: 1px solid rgba(100,180,230,0.2);
+  }
+
+  #layoutWidget .controlSelect,
+  #layoutWidget .controlDate {
+    font-size: 16px !important;
+    padding: 8px 10px !important;
+    height: auto !important;
+  }
+
+  #layoutWidget .controlLabel {
+    font-size: 13px !important;
+    min-width: 75px !important;
+  }
 }

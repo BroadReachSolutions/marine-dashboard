@@ -206,8 +206,20 @@ function applyMobileWidgetOverrides() {
           <span id="mobileHeaderHumLabel">Humidity</span>
         </div>
       </div>
-      <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 14px;height:36px;">Edit Layout</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        <button id="mobileViewDayBtn" class="ctrlBtn" style="font-size:12px;padding:5px 10px;height:32px;white-space:nowrap;">View Day</button>
+        <button id="mobileLiveBtn" class="ctrlBtn" style="font-size:12px;padding:5px 10px;height:32px;white-space:nowrap;">Live</button>
+        <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 14px;height:36px;">Edit</button>
+      </div>
     `;
+
+    /* Wire mobile header tide buttons */
+    document.getElementById("mobileViewDayBtn").addEventListener("click", () => {
+      document.getElementById("viewDateBtn")?.click();
+    });
+    document.getElementById("mobileLiveBtn").addEventListener("click", () => {
+      document.getElementById("liveViewBtn")?.click();
+    });
     document.body.prepend(header);
 
     /* Wire the header edit button to the same layoutToggle logic */
