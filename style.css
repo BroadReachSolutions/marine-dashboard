@@ -1387,33 +1387,40 @@ body.layout-edit .widget.theme-clean {
     padding-top: 66px !important;
   }
 
-  /* Show layoutWidget on mobile but hide the edit button (it's in the header) */
+  /* layoutWidget: show station + tide date controls on mobile */
   #layoutWidget {
-    display: block !important;
-    order: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-
-  #layoutWidget .widgetFrame::before {
-    display: none !important;
+    order: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   #layoutWidget .ctrlBtnEdit,
   #layoutWidget .widgetHandle,
-  #layoutWidget .widgetResize {
+  #layoutWidget .widgetResize,
+  #layoutWidget #viewDateBtn,
+  #layoutWidget #liveViewBtn {
     display: none !important;
   }
 
   #layoutWidget .controlBtns {
-    display: flex;
+    display: none !important;
   }
 
-  /* Hide View Day / Return to Live buttons on mobile — use tide date only */
-  #layoutWidget #viewDateBtn,
-  #layoutWidget #liveViewBtn {
-    display: none !important;
+  #layoutWidget .controlPanel {
+    padding: 10px !important;
+  }
+
+  #layoutWidget .controlRow {
+    gap: 8px !important;
+  }
+
+  #layoutWidget .controlSelect,
+  #layoutWidget .controlDate {
+    font-size: 16px !important;
+    padding: 8px 10px !important;
   }
 
   /* Edit button in header — explicit size so text shows */
