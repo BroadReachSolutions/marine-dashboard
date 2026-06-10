@@ -61,8 +61,11 @@ let nearbyStations = [...LOCAL_STATIONS];
 const WEATHER_HOURS = 12;
 
 /* ---- Mobile detection ---- */
+/* Set once at startup — true if device has a touchscreen */
+const _isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
 function isMobile() {
-  return window.innerWidth <= 960 || ('ontouchstart' in window && window.innerWidth < 1200);
+  return _isMobileDevice;
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
@@ -165,6 +168,13 @@ async function init() {
     applyMobileWidgetOverrides();
   }
 
+  /* Resize listener to re-apply on orientation change */
+  window.addEventListener("resize", () => {
+    if (isMobile() && !document.body.classList.contains("is-mobile")) {
+      applyMobileWidgetOverrides();
+    }
+  });
+
   /* Load location first so weather/tide fetch uses correct coords */
   await loadMarineLocation();
   if (!marineLocationLat || !marineLocationLon) {
@@ -181,13 +191,11 @@ async function init() {
     if (tideViewMode === "live") loadTides();
   }, 60000);
 
-  /* re-apply on orientation/resize */
-  window.addEventListener("resize", () => {
-    if (isMobile()) {
-      applyMobileWidgetOverrides();
-    } else {
-      removeMobileWidgetOverrides();
-    }
+  /* orientation change handler */
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => {
+      if (isMobile()) applyMobileWidgetOverrides();
+    }, 300);
   });
 
 
