@@ -468,6 +468,11 @@ function loadMobileSizes() {
   if (!raw) return;
   try {
     const sizes = JSON.parse(raw);
+    /* Skip if stale */
+    if (sizes.stations || sizes.clock || sizes.logo) {
+      localStorage.removeItem("marineMobileSizes");
+      return;
+    }
     Object.entries(sizes).forEach(([key, val]) => {
       const el = document.querySelector(`.widget[data-widget="${key}"]`);
       if (el && val.h) {
@@ -484,6 +489,11 @@ function loadMobileOrder() {
   if (!raw) return;
   try {
     const order = JSON.parse(raw);
+    /* Skip if it references old removed widgets */
+    if (order.stations || order.clock || order.logo) {
+      localStorage.removeItem("marineMobileOrder");
+      return;
+    }
     Object.entries(order).forEach(([key, val]) => {
       const el = document.querySelector(`.widget[data-widget="${key}"]`);
       if (el && val) el.style.order = val;
