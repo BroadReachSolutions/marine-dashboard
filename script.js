@@ -611,8 +611,9 @@ function makeWidgetInteractive(widget) {
    SAVE / LOAD LAYOUT
    ========================================================================== */
 function saveLayout() {
-  const layout = {};
+  if (isMobile()) return; /* mobile uses CSS flex, no JS layout */
 
+  const layout = {};
   document.querySelectorAll(".widget").forEach(widget => {
     layout[widget.dataset.widget] = {
       left: widget.style.left || `${widget.offsetLeft}px`,
@@ -621,11 +622,13 @@ function saveLayout() {
       height: widget.style.height || `${widget.offsetHeight}px`
     };
   });
-
   localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
 }
 
 function loadLayout() {
+  /* On mobile, skip desktop position/size layout entirely — CSS flex handles it */
+  if (isMobile()) return;
+
   const raw = localStorage.getItem(STORAGE_KEY);
   const layout = raw ? JSON.parse(raw) : DEFAULT_LAYOUT;
 
