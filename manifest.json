@@ -1,22 +1,22 @@
 {
   "name": "Marine Dashboard",
-  "short_name": "MarineDash",
+  "short_name": "Marine",
+  "description": "St Augustine Sailing marine weather dashboard",
   "start_url": "/marine-dashboard/",
-  "scope": "/marine-dashboard/",
   "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
   "orientation": "portrait",
-  "background_color": "#0b3d57",
-  "theme_color": "#0b3d57",
   "icons": [
-  {
-    "src": "/marine-dashboard/staugustine-sailing-logo.png",
-    "sizes": "192x192",
-    "type": "image/png"
-  },
-  {
-    "src": "/marine-dashboard/staugustine-sailing-logo.png",
-    "sizes": "512x512",
-    "type": "image/png"
-  }
-]
+    {
+      "src": "staugustine-sailing-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "staugustine-sailing-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
