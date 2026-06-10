@@ -130,6 +130,12 @@ let dashboardSettings = {
   backgroundHue: 0
 };
 
+/* Visit ?reset to wipe all stored layout/settings data */
+if (window.location.search.includes("reset")) {
+  localStorage.clear();
+  window.location.href = window.location.pathname;
+}
+
 init();
 
 /* ==========================================================================
