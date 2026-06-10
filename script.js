@@ -189,6 +189,32 @@ async function init() {
    Uses a CSS class so we never touch localStorage settings. */
 function applyMobileWidgetOverrides() {
   document.body.classList.add("is-mobile");
+
+  /* Clear any desktop inline position/size styles so CSS flex takes over */
+  document.querySelectorAll(".widget").forEach(w => {
+    w.style.left   = "";
+    w.style.top    = "";
+    w.style.width  = "";
+    w.style.height = "";
+    w.style.position = "";
+    w.style.transform = "";
+  });
+
+  /* Also clear dashboard inline styles set by setupDashboardScale */
+  const dashboard = document.getElementById("dashboard");
+  const stage = document.getElementById("dashboardStage");
+  if (dashboard) {
+    dashboard.style.position  = "";
+    dashboard.style.transform = "";
+    dashboard.style.left      = "";
+    dashboard.style.top       = "";
+  }
+  if (stage) {
+    stage.style.width    = "";
+    stage.style.height   = "";
+    stage.style.overflow = "";
+  }
+
   ["clockWidget", "dividerWidget", "logoWidget", "heroTextWidget"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add("mobile-hidden");
@@ -246,20 +272,18 @@ function removeMobileWidgetOverrides() {
    SCALE
    ========================================================================== */
  function setupDashboardScale() {
+  /* Mobile uses CSS flex layout — skip JS scaling entirely */
+  if (isMobile()) return;
+
   const stage = document.getElementById("dashboardStage");
   const dashboard = document.getElementById("dashboard");
 
   function applyScale() {
+    if (isMobile()) return; /* safety check on resize */
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
     const scale = vw / DASHBOARD_WIDTH;
-
-    const scaledW = DASHBOARD_WIDTH * scale;
-    const scaledH = DASHBOARD_HEIGHT * scale;
-
-    const offsetX = (vw - scaledW) / 2;
-    const offsetY = (vh - scaledH) / 2;
 
     stage.style.width = "100vw";
     stage.style.height = "100vh";
@@ -276,9 +300,7 @@ function removeMobileWidgetOverrides() {
 
   window.addEventListener("resize", () => {
     applyScale();
-    if (tidePredictions.length) {
-      drawTide(tidePredictions);
-    }
+    if (tidePredictions.length) drawTide(tidePredictions);
   });
 
   applyScale();
