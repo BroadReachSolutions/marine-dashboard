@@ -511,7 +511,8 @@ function loadMobileSizes() {
     }
     Object.entries(sizes).forEach(([key, val]) => {
       const el = document.querySelector(`.widget[data-widget="${key}"]`);
-      if (el && val.h) {
+      /* Only apply if > 40px so we never accidentally collapse a widget */
+      if (el && val.h && parseInt(val.h) > 40) {
         el.style.setProperty("height",     val.h, "important");
         el.style.setProperty("min-height", val.h, "important");
         el.style.setProperty("max-height", "none","important");
@@ -977,7 +978,8 @@ function applyWidgetSettings(widget, state) {
   const hideBtn = widget.querySelector(".widgetHideBtn");
 
   /* hidden widgets should still appear while editing */
-  widget.classList.toggle("hidden-widget", !!state.hidden && !layoutEditMode);
+  /* On mobile never hide widgets — hidden state only applies on desktop */
+  widget.classList.toggle("hidden-widget", !!state.hidden && !layoutEditMode && !isMobile());
 
   if (hideBtn) {
     hideBtn.classList.toggle("is-hidden", !!state.hidden);

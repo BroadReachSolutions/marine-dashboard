@@ -1227,6 +1227,11 @@ body.layout-edit .widget.theme-clean {
 
   body.layout-edit #dashboard { padding-bottom: 120px !important; }
 
+  /* Never hide widgets on mobile regardless of desktop hidden state */
+  .widget.hidden-widget {
+    display: flex !important;
+  }
+
   /* All widgets stack full width */
   .widget {
     position: relative !important;
@@ -1241,7 +1246,7 @@ body.layout-edit .widget.theme-clean {
   .widgetFrame { overflow: visible; border-radius: 14px; }
 
   /* Mobile order */
-  #layoutWidget     { order: 1; height: auto !important; }
+  #layoutWidget     { order: 1; height: auto !important; min-height: 110px !important; }
   #windWidget       { order: 2; height: 320px !important; }
   #tempWidget       { order: 3; height: 100px !important; display: flex !important; }
   #tideStatusWidget { order: 4; height: 80px !important; }
