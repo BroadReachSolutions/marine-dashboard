@@ -396,27 +396,35 @@ function setupMobileReorder() {
   let startY     = 0;
   let startOrder = 0;
   let isDragging = false;
-  const DRAG_PX  = 12; /* px of movement before commit to drag */
+  const DRAG_PX  = 8;
+
+  /* Add a drag handle bar to each widget in edit mode */
+  widgets.forEach(w => {
+    if (!w.querySelector(".mobileDragBar")) {
+      const bar = document.createElement("div");
+      bar.className = "mobileDragBar";
+      bar.innerHTML = '<span class="mobileDragBarDots">⠿</span>';
+      w.querySelector(".widgetFrame").prepend(bar);
+    }
+  });
 
   function getOrder(el) {
     return parseInt(el.style.order || getComputedStyle(el).order || "0") || 0;
   }
 
-  function onWidgetTouchStart(e) {
+  function onHandleTouchStart(e) {
     if (!layoutEditMode) return;
-    /* allow settings button and resize handle to still work */
-    if (e.target.closest(".widgetSettingsBtn")) return;
-    if (e.target.closest(".widgetHideBtn")) return;
-    if (e.target.closest(".widgetResize")) return;
-    if (e.target.closest(".widgetSettingsPanel")) return;
+    const widget = e.currentTarget.closest(".widget");
+    if (!widget) return;
+    e.stopPropagation();
 
-    dragEl     = e.currentTarget;
+    dragEl     = widget;
     startY     = e.touches[0].clientY;
-    startOrder = getOrder(dragEl);
+    startOrder = getOrder(widget);
     isDragging = false;
   }
 
-  function onWidgetTouchMove(e) {
+  function onHandleTouchMove(e) {
     if (!dragEl) return;
     const dy = e.touches[0].clientY - startY;
 
@@ -424,11 +432,10 @@ function setupMobileReorder() {
       isDragging = true;
       dragEl.classList.add("mobile-dragging");
     }
-
     if (!isDragging) return;
     e.preventDefault();
 
-    const itemH    = dragEl.offsetHeight + 10;
+    const itemH    = dragEl.offsetHeight + 6;
     const shift    = Math.round(dy / itemH);
     const newOrder = Math.max(1, Math.min(widgets.length, startOrder + shift));
 
@@ -442,24 +449,29 @@ function setupMobileReorder() {
     });
   }
 
-  function onWidgetTouchEnd() {
+  function onHandleTouchEnd() {
     if (dragEl) dragEl.classList.remove("mobile-dragging");
     dragEl     = null;
     isDragging = false;
   }
 
-  /* attach to whole widget frame */
+  /* Only attach drag to the handle bar */
   widgets.forEach(w => {
-    w.addEventListener("touchstart", onWidgetTouchStart, { passive: true });
-    w.addEventListener("touchmove",  onWidgetTouchMove,  { passive: false });
-    w.addEventListener("touchend",   onWidgetTouchEnd);
+    const bar = w.querySelector(".mobileDragBar");
+    if (!bar) return;
+    bar.addEventListener("touchstart", onHandleTouchStart, { passive: true });
+    bar.addEventListener("touchmove",  onHandleTouchMove,  { passive: false });
+    bar.addEventListener("touchend",   onHandleTouchEnd);
   });
 
   mobileReorderCleanup = () => {
     widgets.forEach(w => {
-      w.removeEventListener("touchstart", onWidgetTouchStart);
-      w.removeEventListener("touchmove",  onWidgetTouchMove);
-      w.removeEventListener("touchend",   onWidgetTouchEnd);
+      const bar = w.querySelector(".mobileDragBar");
+      if (bar) {
+        bar.removeEventListener("touchstart", onHandleTouchStart);
+        bar.removeEventListener("touchmove",  onHandleTouchMove);
+        bar.removeEventListener("touchend",   onHandleTouchEnd);
+      }
       w.classList.remove("mobile-dragging");
     });
   };
@@ -969,9 +981,8 @@ function applyAllWidgetSettings() {
 function applyWidgetSettings(widget, state) {
   const hideBtn = widget.querySelector(".widgetHideBtn");
 
-  /* hidden widgets should still appear while editing */
-  /* On mobile never hide widgets — hidden state only applies on desktop */
-  widget.classList.toggle("hidden-widget", !!state.hidden && !layoutEditMode && !isMobile());
+  /* Hidden widgets show while editing; on mobile respects hidden state when not editing */
+  widget.classList.toggle("hidden-widget", !!state.hidden && !layoutEditMode);
 
   if (hideBtn) {
     hideBtn.classList.toggle("is-hidden", !!state.hidden);

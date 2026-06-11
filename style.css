@@ -1220,16 +1220,16 @@ body.layout-edit .widget.theme-clean {
     flex-direction: column;
     gap: 6px;
     padding: 6px 6px 12px 6px;
-    padding-top: 76px !important; /* below fixed header */
+    padding-top: 58px !important; /* below fixed header */
     box-sizing: border-box;
     min-height: calc(100vh - 76px);
   }
 
   body.layout-edit #dashboard { padding-bottom: 80px !important; }
 
-  /* Never hide widgets on mobile */
-  .widget.hidden-widget { display: flex !important; }
-  .mobile-hidden        { display: none !important; }
+  /* Hidden widgets are hidden on mobile too (except during edit mode) */
+  body.layout-edit .widget.hidden-widget { display: flex !important; }
+  .mobile-hidden { display: none !important; }
 
   /* All widgets: full width, flex column */
   .widget {
@@ -1258,12 +1258,13 @@ body.layout-edit .widget.theme-clean {
   #mobileHeader {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 68px;
+    height: auto;
+    min-height: 48px;
     z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 12px;
+    padding: 6px 12px;
     background: rgba(5, 14, 22, 0.97);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(125, 186, 220, 0.2);
@@ -1279,7 +1280,7 @@ body.layout-edit .widget.theme-clean {
   }
 
   #mobileHeaderTempVal {
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 700;
     color: #f5fbff;
     line-height: 1;
@@ -1410,7 +1411,7 @@ body.layout-edit .widget.theme-clean {
     width: calc(100vw - 24px);
     max-height: 40vh;
     position: fixed;
-    top: 72px; left: 12px; right: 12px;
+    top: 56px; left: 12px; right: 12px;
     z-index: 99998;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1639,4 +1640,32 @@ body.layout-edit .widget.theme-clean {
     font-size: 13px !important;
     min-width: 75px !important;
   }
+}
+
+
+/* ── Mobile drag handle bar (shown in edit mode) ── */
+.mobileDragBar {
+  display: none;
+  width: 100%;
+  height: 28px;
+  background: rgba(100, 180, 255, 0.08);
+  border-bottom: 1px solid rgba(100, 180, 255, 0.15);
+  border-radius: 12px 12px 0 0;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+body.layout-edit .mobileDragBar {
+  display: flex;
+}
+
+.mobileDragBarDots {
+  font-size: 18px;
+  color: rgba(140, 200, 240, 0.5);
+  letter-spacing: 2px;
+  pointer-events: none;
+  user-select: none;
 }
