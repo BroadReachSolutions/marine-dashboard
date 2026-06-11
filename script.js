@@ -943,9 +943,20 @@ function closeAllSettingsPanels() {
   document.querySelectorAll(".widget").forEach(w => {
     w.classList.remove("show-settings");
   });
-  /* Also hide any detached panels floating on body */
+  /* Move detached panels back into their widgets so they can be reopened */
   document.querySelectorAll(".widgetSettingsPanel.is-detached").forEach(p => {
-    p.style.display = "none";
+    const key    = p.dataset.settingsFor;
+    const widget = key ? document.querySelector(`.widget[data-widget="${key}"]`) : null;
+    p.classList.remove("is-detached");
+    p.style.display  = "";
+    p.style.position = "";
+    p.style.left     = "";
+    p.style.top      = "";
+    p.style.right    = "";
+    p.style.width    = "";
+    p.style.maxHeight = "";
+    p.style.zIndex   = "";
+    if (widget) widget.appendChild(p);
   });
 }
 
