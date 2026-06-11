@@ -181,6 +181,10 @@ async function init() {
 
   /* Now fetch all data — awaited so widgets populate before user sees them */
   await refreshAll();
+  /* Force forecast to re-render after initial load (clears stale cache key) */
+  const fcWrap = document.getElementById("forecast");
+  if (fcWrap) fcWrap.dataset.renderedKey = "";
+  renderWeather(null);
 
   setInterval(updateClockAndDate, 1000);
 
@@ -239,32 +243,48 @@ function applyMobileWidgetOverrides() {
     const header = document.createElement("div");
     header.id = "mobileHeader";
     header.innerHTML = `
-      <div id="mobileHeaderTemp">
-        <span id="mobileHeaderTempVal">--°</span>
-        <div id="mobileHeaderHumWrap">
-          <span id="mobileHeaderHumPct">--%</span>
-          <span id="mobileHeaderHumLabel">Humidity</span>
+      <div id="mobileHeaderLeft">
+        <div id="mobileHeaderTemp">
+          <span id="mobileHeaderTempVal">--°</span>
+          <div id="mobileHeaderHumWrap">
+            <span id="mobileHeaderHumPct">--%</span>
+            <span id="mobileHeaderHumLabel">Humidity</span>
+          </div>
         </div>
+        <select id="mobileStationSelect" class="mobileStationSelect"></select>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-        <button id="mobileViewDayBtn" class="ctrlBtn" style="font-size:12px;padding:5px 10px;height:32px;white-space:nowrap;">View Day</button>
-        <button id="mobileLiveBtn" class="ctrlBtn" style="font-size:12px;padding:5px 10px;height:32px;white-space:nowrap;">Live</button>
-        <button id="mobileEditBtn" class="layoutToggle" style="font-size:13px;padding:6px 14px;height:36px;">Edit</button>
-      </div>
+      <button id="mobileEditBtn" class="mobileEditBtn">Edit</button>
     `;
-
-    /* Wire mobile header tide buttons */
-    document.getElementById("mobileViewDayBtn").addEventListener("click", () => {
-      document.getElementById("viewDateBtn")?.click();
-    });
-    document.getElementById("mobileLiveBtn").addEventListener("click", () => {
-      document.getElementById("liveViewBtn")?.click();
-    });
     document.body.prepend(header);
 
+    /* Sync mobile station select with main select */
+    const mainSelect   = document.getElementById("stationSelect");
+    const mobileSelect = document.getElementById("mobileStationSelect");
+
+    function syncMobileStation() {
+      if (!mobileSelect || !mainSelect) return;
+      mobileSelect.innerHTML = mainSelect.innerHTML;
+      mobileSelect.value     = mainSelect.value;
+    }
+    syncMobileStation();
+
+    /* When mobile select changes, update main and trigger refresh */
+    if (mobileSelect) {
+      mobileSelect.addEventListener("change", () => {
+        if (mainSelect) {
+          mainSelect.value = mobileSelect.value;
+          mainSelect.dispatchEvent(new Event("change"));
+        }
+      });
+    }
+
+    /* Keep in sync when main select options load */
+    const stationObserver = new MutationObserver(syncMobileStation);
+    if (mainSelect) stationObserver.observe(mainSelect, { childList: true });
+
     /* Wire the header edit button to the same layoutToggle logic */
-    const mobileEditBtn = document.getElementById("mobileEditBtn");
-    const desktopToggle = document.getElementById("layoutToggle");
+    const mobileEditBtn  = document.getElementById("mobileEditBtn");
+    const desktopToggle  = document.getElementById("layoutToggle");
     if (mobileEditBtn && desktopToggle) {
       mobileEditBtn.addEventListener("click", () => desktopToggle.click());
     }
@@ -365,7 +385,7 @@ function setupLayoutEditor() {
     /* sync mobile header edit button label */
     const mobileEditBtn = document.getElementById("mobileEditBtn");
     if (mobileEditBtn) {
-      mobileEditBtn.textContent = layoutEditMode ? "Done" : "Edit Layout";
+      mobileEditBtn.textContent = layoutEditMode ? "Done" : "Edit";
       mobileEditBtn.classList.toggle("active", layoutEditMode);
     }
 
