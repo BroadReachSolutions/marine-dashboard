@@ -392,21 +392,22 @@ function setupMobileReorder() {
   if (!dashboard) return;
 
   const widgets = [...dashboard.querySelectorAll(".widget:not(#layoutWidget)")];
-  let dragEl     = null;
-  let startY     = 0;
-  let startOrder = 0;
-  let isDragging = false;
-  const DRAG_PX  = 8;
 
-  /* Add a drag handle bar to each widget in edit mode */
+  /* Add drag bar to each widget if not already there */
   widgets.forEach(w => {
     if (!w.querySelector(".mobileDragBar")) {
       const bar = document.createElement("div");
       bar.className = "mobileDragBar";
-      bar.innerHTML = '<span class="mobileDragBarDots">⠿</span>';
-      w.querySelector(".widgetFrame").prepend(bar);
+      bar.innerHTML = '<span class="mobileDragBarDots">• • •</span>';
+      /* Insert at top of widgetFrame so it overlays */
+      const frame = w.querySelector(".widgetFrame");
+      if (frame) frame.appendChild(bar);
     }
   });
+
+  let dragEl     = null;
+  let startY     = 0;
+  let startOrder = 0;
 
   function getOrder(el) {
     return parseInt(el.style.order || getComputedStyle(el).order || "0") || 0;
@@ -416,52 +417,43 @@ function setupMobileReorder() {
     if (!layoutEditMode) return;
     const widget = e.currentTarget.closest(".widget");
     if (!widget) return;
-    e.stopPropagation();
-
     dragEl     = widget;
     startY     = e.touches[0].clientY;
     startOrder = getOrder(widget);
-    isDragging = false;
+    dragEl.classList.add("mobile-dragging");
   }
 
+  /* passive:true — NEVER blocks scroll. We just track position. */
   function onHandleTouchMove(e) {
     if (!dragEl) return;
-    const dy = e.touches[0].clientY - startY;
+    const dy    = e.touches[0].clientY - startY;
+    const itemH = dragEl.offsetHeight + 6;
+    const shift = Math.round(dy / itemH);
+    if (shift === 0) return;
 
-    if (!isDragging && Math.abs(dy) > DRAG_PX) {
-      isDragging = true;
-      dragEl.classList.add("mobile-dragging");
-    }
-    if (!isDragging) return;
-    e.preventDefault();
-
-    const itemH    = dragEl.offsetHeight + 6;
-    const shift    = Math.round(dy / itemH);
     const newOrder = Math.max(1, Math.min(widgets.length, startOrder + shift));
-
-    widgets.forEach(w => {
-      if (w === dragEl) {
-        w.style.order = newOrder;
-      } else {
-        const wo = getOrder(w);
-        if (wo === newOrder) w.style.order = startOrder;
-      }
-    });
+    if (newOrder !== getOrder(dragEl)) {
+      widgets.forEach(w => {
+        if (w === dragEl) {
+          w.style.order = newOrder;
+        } else {
+          if (getOrder(w) === newOrder) w.style.order = startOrder;
+        }
+      });
+    }
   }
 
   function onHandleTouchEnd() {
     if (dragEl) dragEl.classList.remove("mobile-dragging");
-    dragEl     = null;
-    isDragging = false;
+    dragEl = null;
   }
 
-  /* Only attach drag to the handle bar */
   widgets.forEach(w => {
     const bar = w.querySelector(".mobileDragBar");
     if (!bar) return;
     bar.addEventListener("touchstart", onHandleTouchStart, { passive: true });
-    bar.addEventListener("touchmove",  onHandleTouchMove,  { passive: false });
-    bar.addEventListener("touchend",   onHandleTouchEnd);
+    bar.addEventListener("touchmove",  onHandleTouchMove,  { passive: true });
+    bar.addEventListener("touchend",   onHandleTouchEnd,   { passive: true });
   });
 
   mobileReorderCleanup = () => {

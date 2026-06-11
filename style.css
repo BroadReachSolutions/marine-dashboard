@@ -1643,32 +1643,30 @@ body.layout-edit .widget.theme-clean {
 }
 
 
-/* ── Mobile drag handle bar — overlays top of widget, zero height impact ── */
+/* ── Mobile drag handle — thin strip via ::before, no layout impact ── */
 .mobileDragBar {
-  display: none;
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 30px;
-  background: rgba(100, 180, 255, 0.10);
-  border-bottom: 1px solid rgba(100, 180, 255, 0.18);
+  height: 24px;
+  background: linear-gradient(rgba(100,180,255,0.12), rgba(100,180,255,0));
   border-radius: 12px 12px 0 0;
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
   align-items: center;
   justify-content: center;
-  cursor: grab;
   touch-action: none;
-  z-index: 30;
-  pointer-events: none; /* hidden by default so taps pass through */
 }
 
 body.layout-edit .mobileDragBar {
-  display: flex;
-  pointer-events: auto; /* only intercept touch in edit mode */
+  pointer-events: auto;
 }
 
 .mobileDragBarDots {
-  font-size: 18px;
-  color: rgba(140, 200, 240, 0.5);
-  letter-spacing: 2px;
+  font-size: 14px;
+  color: rgba(140,200,240,0.4);
+  letter-spacing: 3px;
   pointer-events: none;
   user-select: none;
+  margin-top: -4px;
 }
