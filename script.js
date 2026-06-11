@@ -243,48 +243,20 @@ function applyMobileWidgetOverrides() {
     const header = document.createElement("div");
     header.id = "mobileHeader";
     header.innerHTML = `
-      <div id="mobileHeaderLeft">
-        <div id="mobileHeaderTemp">
-          <span id="mobileHeaderTempVal">--°</span>
-          <div id="mobileHeaderHumWrap">
-            <span id="mobileHeaderHumPct">--%</span>
-            <span id="mobileHeaderHumLabel">Humidity</span>
-          </div>
+      <div id="mobileHeaderTemp">
+        <span id="mobileHeaderTempVal">--°</span>
+        <div id="mobileHeaderHumWrap">
+          <span id="mobileHeaderHumPct">--%</span>
+          <span id="mobileHeaderHumLabel">Humidity</span>
         </div>
-        <select id="mobileStationSelect" class="mobileStationSelect"></select>
       </div>
       <button id="mobileEditBtn" class="mobileEditBtn">Edit</button>
     `;
     document.body.prepend(header);
 
-    /* Sync mobile station select with main select */
-    const mainSelect   = document.getElementById("stationSelect");
-    const mobileSelect = document.getElementById("mobileStationSelect");
-
-    function syncMobileStation() {
-      if (!mobileSelect || !mainSelect) return;
-      mobileSelect.innerHTML = mainSelect.innerHTML;
-      mobileSelect.value     = mainSelect.value;
-    }
-    syncMobileStation();
-
-    /* When mobile select changes, update main and trigger refresh */
-    if (mobileSelect) {
-      mobileSelect.addEventListener("change", () => {
-        if (mainSelect) {
-          mainSelect.value = mobileSelect.value;
-          mainSelect.dispatchEvent(new Event("change"));
-        }
-      });
-    }
-
-    /* Keep in sync when main select options load */
-    const stationObserver = new MutationObserver(syncMobileStation);
-    if (mainSelect) stationObserver.observe(mainSelect, { childList: true });
-
     /* Wire the header edit button to the same layoutToggle logic */
-    const mobileEditBtn  = document.getElementById("mobileEditBtn");
-    const desktopToggle  = document.getElementById("layoutToggle");
+    const mobileEditBtn = document.getElementById("mobileEditBtn");
+    const desktopToggle = document.getElementById("layoutToggle");
     if (mobileEditBtn && desktopToggle) {
       mobileEditBtn.addEventListener("click", () => desktopToggle.click());
     }

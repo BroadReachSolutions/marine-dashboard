@@ -1271,14 +1271,6 @@ body.layout-edit .widget.theme-clean {
     gap: 10px;
   }
 
-  #mobileHeaderLeft {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
-  }
-
   #mobileHeaderTemp {
     display: flex;
     align-items: center;
@@ -1303,18 +1295,7 @@ body.layout-edit .widget.theme-clean {
   #mobileHeaderHumPct   { font-size: 13px; font-weight: 600; color: #9fc2d9; line-height: 1.2; }
   #mobileHeaderHumLabel { font-size: 10px; color: rgba(125,186,220,0.55); text-transform: uppercase; line-height: 1; }
 
-  /* Station dropdown in header */
-  .mobileStationSelect {
-    flex: 1;
-    min-width: 0;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(125,186,220,0.25);
-    border-radius: 8px;
-    color: #eef7ff;
-    padding: 5px 8px;
-    font-size: 13px;
-    font-weight: 600;
-  }
+
 
   /* Edit button in header */
   .mobileEditBtn {
@@ -1336,10 +1317,21 @@ body.layout-edit .widget.theme-clean {
   }
 
   /* ── Station/control widget (bottom of scroll, shows tide date) ── */
-  #layoutWidget .widgetFrame { background: rgba(8,20,32,0.7); border-radius: 12px; }
-  #layoutWidget .controlPanel { padding: 10px 12px; }
+  #layoutWidget .widgetFrame { background: rgba(8,20,32,0.7); border-radius: 12px; overflow: hidden; }
+  #layoutWidget .controlPanel { padding: 10px 12px; box-sizing: border-box; width: 100%; }
+  #layoutWidget .controlRow { width: 100%; overflow: hidden; }
   #layoutWidget .controlSelect,
-  #layoutWidget .controlDate  { font-size: 15px !important; padding: 7px 10px !important; }
+  #layoutWidget .controlDate  {
+    font-size: 15px !important;
+    padding: 7px 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
   #layoutWidget .controlBtns  { gap: 6px; }
   #layoutWidget .ctrlBtn      { font-size: 12px !important; padding: 6px 8px !important; flex: 1; }
   #layoutWidget .ctrlBtnEdit  { display: none !important; } /* Edit is in fixed header */
