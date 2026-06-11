@@ -696,7 +696,9 @@ function setupWidgetSettingsSystem() {
         e.stopPropagation();
         if (!layoutEditMode) return;
 
-        const isOpen = widget.classList.contains("show-settings");
+        /* Check if this widget's panel is currently detached and open */
+        const existingPanel = document.querySelector(`.widgetSettingsPanel.is-detached[data-settings-for="${widget.dataset.widget}"]`);
+        const isOpen = widget.classList.contains("show-settings") || !!existingPanel;
         closeAllSettingsPanels();
 
         if (!isOpen) {
@@ -941,19 +943,30 @@ function closeAllSettingsPanels() {
   document.querySelectorAll(".widget").forEach(w => {
     w.classList.remove("show-settings");
   });
+  /* Also hide any detached panels floating on body */
+  document.querySelectorAll(".widgetSettingsPanel.is-detached").forEach(p => {
+    p.style.display = "none";
+  });
 }
 
-/* Close + save settings when tapping outside any open panel (mobile) */
-document.addEventListener("touchstart", (e) => {
-  const openWidget = document.querySelector(".widget.show-settings");
-  if (!openWidget) return;
-  const panel = openWidget.querySelector(".widgetSettingsPanel");
-  const btn   = openWidget.querySelector(".widgetSettingsBtn");
-  if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
-    saveAllSettings();
-    closeAllSettingsPanels();
-  }
-}, { passive: true });
+/* Close settings when tapping/clicking outside — works for both detached and inline panels */
+function handleOutsideSettingsClose(e) {
+  /* Check for any open detached panel */
+  const detachedPanel = document.querySelector(".widgetSettingsPanel.is-detached[style*='block'], .widgetSettingsPanel.is-detached:not([style*='none'])");
+  const openWidget    = document.querySelector(".widget.show-settings");
+
+  if (!detachedPanel && !openWidget) return;
+
+  /* If tap/click was inside any settings panel or any settings button — ignore */
+  if (e.target.closest(".widgetSettingsPanel")) return;
+  if (e.target.closest(".widgetSettingsBtn")) return;
+
+  saveAllSettings();
+  closeAllSettingsPanels();
+}
+
+document.addEventListener("touchstart", handleOutsideSettingsClose, { passive: true });
+document.addEventListener("click",      handleOutsideSettingsClose);
 
 function getWidgetSettings(key) {
   if (!widgetSettings[key]) widgetSettings[key] = {};
