@@ -1242,7 +1242,7 @@ body.layout-edit .widget.theme-clean {
     flex-shrink: 0;
   }
 
-  .widgetFrame { overflow: hidden; border-radius: 12px; height: 100%; }
+  .widgetFrame { overflow: hidden; border-radius: 12px; height: 100%; position: relative; }
 
   /* ── Widget order and proportional heights ──
      Total usable height ≈ 100vh - 76px header - 24px padding - 5*6px gaps = ~100vh - 130px
@@ -1388,7 +1388,7 @@ body.layout-edit .widget.theme-clean {
 
   body.layout-edit .widget {
     outline: 2px dashed rgba(140,200,230,0.4) !important;
-    touch-action: none;
+    touch-action: pan-y; /* allow vertical page scroll everywhere */
   }
 
   body.layout-edit .widgetResize {
@@ -1643,23 +1643,26 @@ body.layout-edit .widget.theme-clean {
 }
 
 
-/* ── Mobile drag handle bar (shown in edit mode) ── */
+/* ── Mobile drag handle bar — overlays top of widget, zero height impact ── */
 .mobileDragBar {
   display: none;
-  width: 100%;
-  height: 28px;
-  background: rgba(100, 180, 255, 0.08);
-  border-bottom: 1px solid rgba(100, 180, 255, 0.15);
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 30px;
+  background: rgba(100, 180, 255, 0.10);
+  border-bottom: 1px solid rgba(100, 180, 255, 0.18);
   border-radius: 12px 12px 0 0;
   align-items: center;
   justify-content: center;
   cursor: grab;
   touch-action: none;
-  flex-shrink: 0;
+  z-index: 30;
+  pointer-events: none; /* hidden by default so taps pass through */
 }
 
 body.layout-edit .mobileDragBar {
   display: flex;
+  pointer-events: auto; /* only intercept touch in edit mode */
 }
 
 .mobileDragBarDots {
