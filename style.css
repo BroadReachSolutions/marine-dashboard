@@ -1219,13 +1219,13 @@ body.layout-edit .widget.theme-clean {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 6px 6px 12px 6px;
+    padding: 6px 6px 40px 6px;
     padding-top: 58px !important; /* below fixed header */
     box-sizing: border-box;
     min-height: calc(100vh - 76px);
   }
 
-  body.layout-edit #dashboard { padding-bottom: 80px !important; }
+  #dashboard { padding-bottom: 40px !important; }  /* always enough room for station widget */
 
   /* Hidden widgets are hidden on mobile too (except during edit mode) */
   body.layout-edit .widget.hidden-widget { display: flex !important; }
@@ -1388,8 +1388,11 @@ body.layout-edit .widget.theme-clean {
 
   body.layout-edit .widget {
     outline: 2px dashed rgba(140,200,230,0.4) !important;
-    touch-action: pan-y; /* allow vertical page scroll everywhere */
+    touch-action: pan-y;
   }
+
+  /* No outline or header visual outside edit mode */
+  .widget { outline: none !important; }
 
   body.layout-edit .widgetResize {
     display: flex !important;
@@ -1643,12 +1646,13 @@ body.layout-edit .widget.theme-clean {
 }
 
 
-/* ── Mobile drag handle — thin strip via ::before, no layout impact ── */
+/* ── Mobile drag handle — invisible outside edit mode, appears in edit ── */
 .mobileDragBar {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 24px;
-  background: linear-gradient(rgba(100,180,255,0.12), rgba(100,180,255,0));
+  height: 0;           /* zero height — totally invisible outside edit */
+  overflow: hidden;
+  background: transparent;
   border-radius: 12px 12px 0 0;
   z-index: 30;
   pointer-events: none;
@@ -1656,17 +1660,26 @@ body.layout-edit .widget.theme-clean {
   align-items: center;
   justify-content: center;
   touch-action: none;
+  transition: height 0.15s ease;
 }
 
 body.layout-edit .mobileDragBar {
+  height: 26px;        /* appears only in edit mode */
   pointer-events: auto;
+  background: linear-gradient(rgba(100,180,255,0.14), rgba(100,180,255,0));
+  border-bottom: 1px solid rgba(100,180,255,0.18);
+  overflow: visible;
 }
 
 .mobileDragBarDots {
   font-size: 14px;
-  color: rgba(140,200,240,0.4);
+  color: transparent;
   letter-spacing: 3px;
   pointer-events: none;
   user-select: none;
   margin-top: -4px;
+}
+
+body.layout-edit .mobileDragBarDots {
+  color: rgba(140,200,240,0.45);
 }
