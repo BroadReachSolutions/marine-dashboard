@@ -1194,30 +1194,24 @@ body.layout-edit .widget.theme-clean {
   display: none !important;
 }
 
-@media (max-width: 767px), (max-width: 1400px) and (pointer: coarse) {
+@media (max-width: 767px) {
 
-  /* Make the dashboard a normal scrollable page instead of a scaled canvas */
   body {
     overflow-y: auto;
     overflow-x: hidden;
-    /* Solid background so there's no gradient seam when scrolling */
-    background: var(--dashboard-bg-1) !important;
+    background: var(--dashboard-bg-1, #07131c) !important;
     min-height: 100vh;
   }
 
-  html {
-    background: var(--dashboard-bg-1);
-  }
+  html { background: var(--dashboard-bg-1, #07131c); }
 
-  #app,
-  #dashboardStage {
+  #app, #dashboardStage {
     position: static;
     width: 100%;
     height: auto;
     overflow: visible;
   }
 
-  /* Override the JS transform-scale approach — let widgets flow naturally */
   #dashboard {
     position: relative;
     width: 100% !important;
@@ -1227,20 +1221,13 @@ body.layout-edit .widget.theme-clean {
     flex-direction: column;
     gap: 10px;
     padding: 8px;
+    padding-top: 66px !important;
     box-sizing: border-box;
   }
 
-  /* Edit mode: extra bottom room for resizing */
-  body.layout-edit #dashboard {
-    padding-bottom: 120px !important;
-  }
+  body.layout-edit #dashboard { padding-bottom: 120px !important; }
 
-  /* Resized widgets can grow freely without pushing siblings */
-  body.layout-edit .widget {
-    flex-shrink: 0;
-  }
-
-  /* All widgets: stack vertically, full width */
+  /* All widgets stack full width */
   .widget {
     position: relative !important;
     width: 100% !important;
@@ -1251,29 +1238,152 @@ body.layout-edit .widget.theme-clean {
     overflow: visible;
   }
 
-  /* Edit mode: widgets stay in flow but show a draggable handle overlay.
-     We disable the JS absolute-position drag on mobile since flexbox
-     layout handles ordering. The handle bar is just visual in mobile edit. */
-  body.layout-edit .widget {
-    position: relative !important;
-    outline: 2px dashed rgba(140,200,230,0.5) !important;
-    outline-offset: 2px;
+  .widgetFrame { overflow: visible; border-radius: 14px; }
+
+  /* Mobile order */
+  #layoutWidget     { order: 1; height: auto !important; }
+  #windWidget       { order: 2; height: 320px !important; }
+  #tempWidget       { order: 3; height: 100px !important; display: flex !important; }
+  #tideStatusWidget { order: 4; height: 80px !important; }
+  #forecastWidget   { order: 5; height: 220px !important; }
+  #tideChartWidget  { order: 6; height: 220px !important; padding: 0 !important; border-radius: 10px !important; overflow: hidden !important; }
+
+  /* Hide widgets not needed on mobile */
+  .mobile-hidden { display: none !important; }
+
+  /* Fixed header */
+  #mobileHeader {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 58px;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    background: rgba(7, 19, 28, 0.96);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(125, 186, 220, 0.18);
+    box-sizing: border-box;
+    gap: 12px;
   }
 
-  /* Hide the handle bar on mobile — not needed since whole widget is draggable in edit */
-  .widgetHandle {
-    display: none !important;
+  #mobileHeaderTemp {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
   }
 
-  /* In edit mode show a subtle drag indicator on the whole widget */
+  #mobileHeaderTempVal {
+    font-size: 36px;
+    font-weight: 700;
+    color: #f5fbff;
+    line-height: 1;
+  }
+
+  #mobileHeaderHumWrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    height: 100%;
+  }
+
+  #mobileHeaderHumPct   { font-size: 16px; font-weight: 600; color: #9fc2d9; line-height: 1; }
+  #mobileHeaderHumLabel { font-size: 11px; color: rgba(125,186,220,0.6); text-transform: uppercase; line-height: 1; }
+
+  #mobileEditBtn {
+    width: auto !important;
+    height: 36px !important;
+    padding: 0 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: #eef7ff !important;
+  }
+
+  /* Tide chart fills widget */
+  #tideChartWidget .tideSection,
+  #tideChartWidget .tidePanel {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  #tideChartWidget #tideChart {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  #tideLine { display: none !important; }
+
+  /* Forecast scroll */
+  .forecastWrap {
+    padding: 10px 0;
+    overflow: hidden;
+    touch-action: pan-y;
+    user-select: none;
+  }
+
+  .forecast {
+    gap: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    will-change: transform;
+  }
+
+  .card {
+    flex: 0 0 calc(100% / 3);
+    box-sizing: border-box;
+    padding: 14px 6px;
+  }
+
+  /* Tide chart touch */
+  #tideChart {
+    cursor: grab;
+    touch-action: pan-y;
+  }
+
+  /* Station/control panel on mobile */
+  .controlPanel { padding: 10px !important; }
+  .controlSelect, .controlDate {
+    font-size: 16px !important;
+    padding: 8px 10px !important;
+  }
+  .controlBtns { display: flex !important; gap: 6px; }
+  .ctrlBtn { font-size: 12px !important; padding: 6px 4px !important; }
+
+  /* Widget controls - only in edit mode */
+  .widgetControls { display: none !important; }
+  body.layout-edit .widgetControls {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: absolute;
+    top: 6px; right: 6px;
+    z-index: 60 !important;
+  }
+
+  .widgetHideBtn { display: inline-flex !important; }
+
+  /* Handle hidden in normal mode */
+  .widgetHandle { display: none !important; }
+  body.layout-edit .widgetHandle { touch-action: none; cursor: grab; }
+
+  /* Edit mode */
   body.layout-edit .widget {
     position: relative !important;
     outline: 2px dashed rgba(140,200,230,0.5) !important;
     outline-offset: 2px;
     touch-action: none;
+    flex-shrink: 0;
   }
 
-  /* Resize handle: large touch target in bottom-right corner in edit mode */
   body.layout-edit .widgetResize {
     display: flex !important;
     align-items: center;
@@ -1296,292 +1406,7 @@ body.layout-edit .widget.theme-clean {
     pointer-events: none;
   }
 
-  /* Widget controls hidden by default on mobile, shown in edit mode */
-  .widgetControls {
-    display: none !important;
-  }
-
-  body.layout-edit .widgetControls {
-    display: flex !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 60 !important;
-  }
-
-  /* Eye/hide button visible on mobile */
-  .widgetHideBtn {
-    display: inline-flex !important;
-  }
-
-  .widgetFrame {
-    overflow: visible;
-    border-radius: 14px;
-  }
-
-  /* Header bar — fixed at top, holds edit button and temp/humidity */
-  #mobileHeader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 58px;
-    z-index: 99999;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 14px;
-    background: rgba(7, 19, 28, 0.96);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(125, 186, 220, 0.18);
-    box-sizing: border-box;
-    gap: 12px;
-  }
-
-  /* Left side: temp + humidity side by side, both vertically centered */
-  #mobileHeaderTemp {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 100%;
-  }
-
-  #mobileHeaderTempVal {
-    font-size: 36px;
-    font-weight: 700;
-    color: #f5fbff;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-  }
-
-  /* Humidity: % on top line, "Humidity" below */
-  #mobileHeaderHumWrap {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 1px;
-    height: 100%;
-  }
-
-  #mobileHeaderHumPct {
-    font-size: 16px;
-    font-weight: 600;
-    color: #9fc2d9;
-    line-height: 1;
-  }
-
-  #mobileHeaderHumLabel {
-    font-size: 11px;
-    color: rgba(125, 186, 220, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    line-height: 1;
-  }
-
-  /* Push dashboard content below the fixed header */
-  #dashboard {
-    padding-top: 66px !important;
-  }
-
-  /* layoutWidget: show station + tide date controls on mobile */
-  #layoutWidget {
-    order: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  #layoutWidget .ctrlBtnEdit,
-  #layoutWidget .widgetHandle,
-  #layoutWidget .widgetResize,
-  #layoutWidget #viewDateBtn,
-  #layoutWidget #liveViewBtn {
-    display: none !important;
-  }
-
-  #layoutWidget .controlBtns {
-    display: none !important;
-  }
-
-  #layoutWidget .controlPanel {
-    padding: 10px !important;
-  }
-
-  #layoutWidget .controlRow {
-    gap: 8px !important;
-  }
-
-  #layoutWidget .controlSelect,
-  #layoutWidget .controlDate {
-    font-size: 16px !important;
-    padding: 8px 10px !important;
-  }
-
-  /* Edit button in header — explicit size so text shows */
-  #mobileEditBtn {
-    width: auto !important;
-    height: 36px !important;
-    padding: 0 14px !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    white-space: nowrap;
-    flex-shrink: 0;
-    color: #eef7ff !important;
-  }
-
-  /* Mobile order: wind → forecast → tideStatus → tideChart → station controls */
-  #windWidget       { order: 1; height: 320px !important; }
-  #forecastWidget   { order: 2; height: 220px !important; }
-  #tideStatusWidget { order: 3; height: 80px !important; }
-  #tideChartWidget  {
-    order: 4;
-    height: 220px !important;
-    padding: 0 !important;
-    border-radius: 10px !important;
-    overflow: hidden !important;
-  }
-  #layoutWidget     { order: 5; height: auto !important; }
-  #tempWidget       { order: 6; height: 100px !important; display: flex !important; }
-
-  #tideChartWidget .tideSection,
-  #tideChartWidget .tidePanel {
-    padding: 0 !important;
-    margin: 0 !important;
-    height: 100% !important;
-    border-radius: 0 !important;
-  }
-
-  #tideChartWidget #tideChart {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-    border-radius: 0 !important;
-  }
-
-
-  /* Stations bar — stack controls vertically on narrow screens */
-  .stationPanel {
-    padding: 12px 10px 10px 10px;
-  }
-
-  .stationBar,
-  .dateBar {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  #stationSelect {
-    min-width: 0;
-    width: 100%;
-    font-size: 15px;
-  }
-
-  #tideDateSelect {
-    min-width: 0;
-    font-size: 15px;
-  }
-
-  .dateBtn {
-    font-size: 14px;
-    min-width: 100px;
-    padding: 8px 10px;
-  }
-
-  /* Forecast: clip window, inner strip slides via translateX */
-  .forecastWrap {
-    padding: 10px 0;
-    overflow: hidden;
-    touch-action: pan-y;
-    user-select: none;
-  }
-
-  .forecast {
-    gap: 0;
-    display: flex;
-    flex-wrap: nowrap;
-    will-change: transform;
-    transition: transform 0.05s linear;
-  }
-
-  .card {
-    flex: 0 0 calc(100% / 3);
-    box-sizing: border-box;
-    padding: 14px 6px;
-  }
-
-  .card {
-    padding: 14px 8px;
-    border-radius: 12px;
-    min-width: 0;
-  }
-
-  .card .hour   { font-size: 17px; }
-  .card .tempF  { font-size: 30px; }
-  .card .humidity,
-  .card .tempC  { font-size: 13px; }
-  .card .rain   { font-size: 14px; }
-  .card .windMini,
-  .card .dirMini{ font-size: 13px; }
-
-
-
-  /* Tide chart: taller canvas, touch-draggable */
-  .tideSection {
-    padding: 0;
-    margin: 0 -2px;
-  }
-
-  .tidePanel {
-    border-radius: 10px;
-  }
-
-  #tideChart {
-    cursor: grab;
-    /* pan-x for horizontal chart drag; pan-y lets the page scroll vertically */
-    touch-action: pan-y;
-  }
-
-  #tideChart:active {
-    cursor: grabbing;
-  }
-
-  /* Hide HTML tide line element on mobile — drawn on canvas instead */
-  #tideLine {
-    display: none !important;
-  }
-
-  /* windInlineTemp hidden on mobile — temp is in the header instead */
-  #windInlineTemp {
-    display: none !important;
-  }
-
-  /* Temperature widget */
-  .tempBox {
-    padding: 14px 10px;
-  }
-
-  #tempMain { font-size: 52px; }
-  #tempSub  { font-size: 18px; }
-
-  /* Tide status */
-  .lowTideAlert { font-size: 18px; padding-top: 8px; }
-  .currentTide  { font-size: 20px; }
-
-  /* Wind / compass */
-  .windBox {
-    padding: 12px 8px;
-    gap: 8px;
-  }
-
-  .windReadingLine { font-size: 20px; }
-
-  /* Settings panels — draggable floating card on mobile, half screen height */
+  /* Settings panels */
   .widgetSettingsPanel {
     width: calc(100vw - 32px);
     max-height: 38vh;
@@ -1599,7 +1424,13 @@ body.layout-edit .widget.theme-clean {
     touch-action: pan-y;
   }
 
-  /* Show a drag grip at the top of the settings panel */
+  .settingsHeader {
+    position: relative;
+    padding-top: 16px;
+    cursor: grab;
+    touch-action: none;
+  }
+
   .settingsHeader::before {
     content: "";
     display: block;
@@ -1613,13 +1444,17 @@ body.layout-edit .widget.theme-clean {
     border-radius: 2px;
   }
 
-  .settingsHeader {
-    position: relative;
-    padding-top: 16px;
-    cursor: grab;
-    touch-action: none;
+  /* Dragging widget */
+  .widget.mobile-dragging {
+    opacity: 0.6;
+    outline: 2px solid rgba(100,200,255,0.8) !important;
+    z-index: 999;
   }
+
+  /* Wind inline temp hidden - shown in header */
+  #windInlineTemp { display: none !important; }
 }
+
 
   /* Widget being dragged during mobile reorder */
   .widget.mobile-dragging {
