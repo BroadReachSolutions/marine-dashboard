@@ -3,7 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marine Dashboard</title>
+  <title>Marine Dashboard | St Augustine Sailing</title>
+
+  <!-- Business identity -->
+  <meta name="description" content="Real-time marine weather dashboard for St Augustine Sailing — wind, tide, radar and forecast.">
+  <meta name="author" content="St Augustine Sailing">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Open Graph (makes link previews look professional) -->
+  <meta property="og:title" content="Marine Dashboard | St Augustine Sailing">
+  <meta property="og:description" content="Real-time wind, tide, radar and forecast for St Augustine sailors.">
+  <meta property="og:type" content="website">
+
+  <!-- Content Security Policy — explicitly whitelists every external source we use -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data:
+      https://*.arcgisonline.com
+      https://*.openstreetmap.org
+      https://tilecache.rainviewer.com
+      https://server.arcgisonline.com;
+    connect-src 'self'
+      https://api.open-meteo.com
+      https://api.tidesandcurrents.noaa.gov
+      https://api.rainviewer.com
+      https://tilecache.rainviewer.com
+      https://nominatim.openstreetmap.org
+      https://geocoding-api.open-meteo.com;
+    frame-src
+      https://www.rainviewer.com;
+    worker-src 'self';
+    manifest-src 'self';
+  ">
+
   <link rel="stylesheet" href="style.css">
   <!-- PWA support -->
   <link rel="manifest" href="manifest.json">
