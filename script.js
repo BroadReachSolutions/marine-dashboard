@@ -1873,6 +1873,12 @@ async function loadMarineLocation() {
   if (lat && lon) {
     marineLocationLat = parseFloat(lat);
     marineLocationLon = parseFloat(lon);
+    /* Force radar iframe to reload with new location */
+    if (compassMapMode === "radar") {
+      const iframeEl = document.getElementById("radarIframe");
+      if (iframeEl) iframeEl.src = "";
+      setTimeout(updateCompassMap, 100);
+    }
     userLat = marineLocationLat;
     userLon = marineLocationLon;
     const input = document.getElementById("marineAddressInput");
@@ -3112,9 +3118,15 @@ function updateCompassMap() {
     /* Move iframe directly into the widget (not widgetFrame) */
     if (iframe.parentElement !== widgetEl2) widgetEl2.appendChild(iframe);
 
-    const lat  = marineLocationLat != null ? marineLocationLat : (userLat  || 29.9);
-    const lon  = marineLocationLon != null ? marineLocationLon : (userLon  || -81.3);
-    /* zoom 6 = see whole state, allow sliding down to 2 for wider view */
+    /* Always prefer saved address location, then geolocation, then default */
+    const savedLat = parseFloat(localStorage.getItem("marineLocationLat"));
+    const savedLon = parseFloat(localStorage.getItem("marineLocationLon"));
+    const lat  = (marineLocationLat != null ? marineLocationLat :
+                  (!isNaN(savedLat)  ? savedLat  :
+                  (userLat           ? userLat   : 29.9)));
+    const lon  = (marineLocationLon != null ? marineLocationLon :
+                  (!isNaN(savedLon)  ? savedLon  :
+                  (userLon           ? userLon   : -81.3)));
     const zoom = Math.max(2, Math.min(compassZoom, 14));
 
     const newSrc = "https://www.rainviewer.com/map.html?loc=" +
