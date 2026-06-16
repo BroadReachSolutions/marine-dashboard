@@ -495,26 +495,36 @@ function saveMobileSize(widget) {
   localStorage.setItem("marineMobileSizes", JSON.stringify(sizes));
 }
 
+const DEFAULT_MOBILE_SIZES = {
+  forecast:  { h: "203px" },
+  wind:      { h: "270px" },
+  tideChart: { h: "225px" }
+};
+
 function loadMobileSizes() {
   const raw = localStorage.getItem("marineMobileSizes");
-  if (!raw) return;
-  try {
-    const sizes = JSON.parse(raw);
-    /* Skip if stale */
-    if (sizes.stations || sizes.clock || sizes.logo) {
-      localStorage.removeItem("marineMobileSizes");
-      return;
-    }
-    Object.entries(sizes).forEach(([key, val]) => {
-      const el = document.querySelector(`.widget[data-widget="${key}"]`);
-      /* Only apply if > 40px so we never accidentally collapse a widget */
-      if (el && val.h && parseInt(val.h) > 40) {
-        el.style.setProperty("height",     val.h, "important");
-        el.style.setProperty("min-height", val.h, "important");
-        el.style.setProperty("max-height", "none","important");
+  let sizes = DEFAULT_MOBILE_SIZES;
+
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      /* Skip if stale (has old widget keys) */
+      if (saved.stations || saved.clock || saved.logo) {
+        localStorage.removeItem("marineMobileSizes");
+      } else {
+        sizes = Object.assign({}, DEFAULT_MOBILE_SIZES, saved);
       }
-    });
-  } catch (e) {}
+    } catch (e) {}
+  }
+
+  Object.entries(sizes).forEach(([key, val]) => {
+    const el = document.querySelector(`.widget[data-widget="${key}"]`);
+    if (el && val.h && parseInt(val.h) > 40) {
+      el.style.setProperty("height",     val.h, "important");
+      el.style.setProperty("min-height", val.h, "important");
+      el.style.setProperty("max-height", "none", "important");
+    }
+  });
 }
 
 function loadMobileOrder() {
