@@ -8,6 +8,12 @@ const DASHBOARD_HEIGHT = 1080;
 
 /* storage keys */
 const STORAGE_KEY = "marineDashboardLayoutV2";
+
+const DEFAULT_MOBILE_SIZES = {
+  forecast:  { h: "203px" },
+  wind:      { h: "270px" },
+  tideChart: { h: "225px" }
+};
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
@@ -494,12 +500,6 @@ function saveMobileSize(widget) {
   };
   localStorage.setItem("marineMobileSizes", JSON.stringify(sizes));
 }
-
-const DEFAULT_MOBILE_SIZES = {
-  forecast:  { h: "203px" },
-  wind:      { h: "270px" },
-  tideChart: { h: "225px" }
-};
 
 function loadMobileSizes() {
   const raw = localStorage.getItem("marineMobileSizes");
