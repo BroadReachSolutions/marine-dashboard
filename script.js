@@ -23,7 +23,7 @@ let userLon = -81.302;
 /* marine location for satellite compass */
 let marineLocationLat = null;
 let marineLocationLon = null;
-let compassZoom = 15;
+let compassZoom = parseInt(localStorage.getItem("compassZoom") || "6");
 let compassMapMode = "compass";
 let compassSize = 190;
 let compassStyle = "ring";
@@ -1901,10 +1901,10 @@ function attachCompassSettingsEvents() {
       compassZoom = parseInt(zoomSlider.value);
       document.getElementById("compassZoomLabel").textContent = compassZoom;
       localStorage.setItem("compassZoom", compassZoom);
-      /* For radar mode, force iframe reload with new zoom */
       if (compassMapMode === "radar") {
         const ifrZ = document.getElementById("radarIframe");
         if (ifrZ) ifrZ.src = "";
+        setTimeout(refreshRadarOverlay, 100);
       }
       updateCompassMap();
     });
@@ -2015,6 +2015,7 @@ function attachCompassSettingsEvents() {
       setter(el.checked);
       localStorage.setItem(key, el.checked ? "1" : "0");
       renderWindReadings();
+      refreshRadarOverlay();
     });
   });
 }
@@ -2152,36 +2153,40 @@ function drawRadarCompassOverlay(canvas) {
     ctx.restore();
   }
 
-  /* ── Arrow: starts at center, points outward to ring edge ── */
-  const arrowLen = r * 0.88;   /* reaches near the ring edge */
+  /* ── Arrow: starts at center, arrowhead at tip ── */
+  const arrowColor = "#ff8060";
+  const arrowLen   = r * 0.88;
   const tipX  = cx + Math.cos(rad) * arrowLen;
   const tipY  = cy + Math.sin(rad) * arrowLen;
+  const hLen  = 16;
+  const hAng  = 0.40;
 
   ctx.save();
-  ctx.shadowColor = "rgba(255,110,70,0.75)";
+  ctx.shadowColor = "rgba(255,110,70,0.7)";
   ctx.shadowBlur  = 10;
-  /* shaft from center to tip */
-  ctx.strokeStyle = "#ff8060";
-  ctx.lineWidth   = 5;
+
+  /* Shaft — stop short of tip so arrowhead sits cleanly at end */
+  ctx.strokeStyle = arrowColor;
+  ctx.lineWidth   = 4;
   ctx.lineCap     = "round";
   ctx.beginPath();
   ctx.moveTo(cx, cy);
-  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(tipX - Math.cos(rad) * hLen * 0.6, tipY - Math.sin(rad) * hLen * 0.6);
   ctx.stroke();
-  /* arrowhead */
-  const hLen = 14;
-  const hAng = 0.42;
-  ctx.fillStyle = "#ffaa80";
+
+  /* Arrowhead at the very tip — same color as shaft */
+  ctx.fillStyle = arrowColor;
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(tipX - hLen*Math.cos(rad-hAng), tipY - hLen*Math.sin(rad-hAng));
   ctx.lineTo(tipX - hLen*Math.cos(rad+hAng), tipY - hLen*Math.sin(rad+hAng));
   ctx.closePath();
   ctx.fill();
-  /* small center dot */
+
+  /* Center dot */
   ctx.beginPath();
-  ctx.arc(cx, cy, 4, 0, Math.PI*2);
-  ctx.fillStyle = "#ff8060";
+  ctx.arc(cx, cy, 3, 0, Math.PI*2);
+  ctx.fillStyle = arrowColor;
   ctx.fill();
   ctx.restore();
 
@@ -3253,36 +3258,40 @@ function drawRadarCompassOverlay(canvas) {
     ctx.restore();
   }
 
-  /* ── Arrow: starts at center, points outward to ring edge ── */
-  const arrowLen = r * 0.88;   /* reaches near the ring edge */
+  /* ── Arrow: starts at center, arrowhead at tip ── */
+  const arrowColor = "#ff8060";
+  const arrowLen   = r * 0.88;
   const tipX  = cx + Math.cos(rad) * arrowLen;
   const tipY  = cy + Math.sin(rad) * arrowLen;
+  const hLen  = 16;
+  const hAng  = 0.40;
 
   ctx.save();
-  ctx.shadowColor = "rgba(255,110,70,0.75)";
+  ctx.shadowColor = "rgba(255,110,70,0.7)";
   ctx.shadowBlur  = 10;
-  /* shaft from center to tip */
-  ctx.strokeStyle = "#ff8060";
-  ctx.lineWidth   = 5;
+
+  /* Shaft — stop short of tip so arrowhead sits cleanly at end */
+  ctx.strokeStyle = arrowColor;
+  ctx.lineWidth   = 4;
   ctx.lineCap     = "round";
   ctx.beginPath();
   ctx.moveTo(cx, cy);
-  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(tipX - Math.cos(rad) * hLen * 0.6, tipY - Math.sin(rad) * hLen * 0.6);
   ctx.stroke();
-  /* arrowhead */
-  const hLen = 14;
-  const hAng = 0.42;
-  ctx.fillStyle = "#ffaa80";
+
+  /* Arrowhead at the very tip — same color as shaft */
+  ctx.fillStyle = arrowColor;
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(tipX - hLen*Math.cos(rad-hAng), tipY - hLen*Math.sin(rad-hAng));
   ctx.lineTo(tipX - hLen*Math.cos(rad+hAng), tipY - hLen*Math.sin(rad+hAng));
   ctx.closePath();
   ctx.fill();
-  /* small center dot */
+
+  /* Center dot */
   ctx.beginPath();
-  ctx.arc(cx, cy, 4, 0, Math.PI*2);
-  ctx.fillStyle = "#ff8060";
+  ctx.arc(cx, cy, 3, 0, Math.PI*2);
+  ctx.fillStyle = arrowColor;
   ctx.fill();
   ctx.restore();
 
