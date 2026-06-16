@@ -2480,9 +2480,17 @@ function drawTide(series) {
 
   if (!c || !series.length) return;
 
+  /* On mobile the canvas may not be laid out yet — retry after a frame */
+  const cW = c.offsetWidth  || c.parentElement?.offsetWidth  || 360;
+  const cH = c.offsetHeight || c.parentElement?.offsetHeight || 200;
+  if (cW < 10 || cH < 10) {
+    setTimeout(() => drawTide(series), 100);
+    return;
+  }
+
   const ctx = c.getContext("2d");
-  c.width  = c.offsetWidth;
-  c.height = c.offsetHeight;
+  c.width  = cW;
+  c.height = cH;
   ctx.clearRect(0, 0, c.width, c.height);
 
   const metrics = getTideChartMetrics(c);
