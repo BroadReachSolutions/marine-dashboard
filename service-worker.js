@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'marine-desktop-v1';
+const CACHE_VERSION = 'marine-desktop-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
