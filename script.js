@@ -70,7 +70,7 @@ const WEATHER_HOURS = 12;
 /* ---- Mobile detection ---- */
 /* isMobile: matches the CSS @media query exactly */
 function isMobile() {
-  return window.matchMedia("(max-width: 767px), (max-width: 1400px) and (pointer: coarse)").matches;
+  return window.matchMedia("(max-width: 767px)").matches;
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
