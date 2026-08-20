@@ -17,9 +17,9 @@ const DEFAULT_MOBILE_SIZES = {
 const NOAA_PROXY = "https://noaa-proxy.lanceburkin.workers.dev";
 const SETTINGS_KEY = "marineDashboardWidgetSettingsV2";
 
-const DEFAULT_LAYOUT = {"layout":{"left":"10px","top":"10px","width":"620px","height":"120px"},"wind":{"left":"1254px","top":"5px","width":"653px","height":"392px"},"temp":{"left":"758px","top":"11px","width":"313px","height":"112px"},"tideStatus":{"left":"433px","top":"316px","width":"981px","height":"91px"},"forecast":{"left":"10px","top":"391px","width":"1900px","height":"270px"},"tideChart":{"left":"-8px","top":"661px","width":"1919px","height":"278px"}};
+const DEFAULT_LAYOUT = {"layout":{"left":"384.808px","top":"115.985px","width":"128px","height":"40px"},"stations":{"left":"6.31489px","top":"-8.67933px","width":"536px","height":"155px"},"logo":{"left":"698.706px","top":"11.5911px","width":"120px","height":"45.1404px"},"heroText":{"left":"562.555px","top":"12.9564px","width":"120px","height":"40px"},"clock":{"left":"8.96061px","top":"220.614px","width":"351px","height":"148px"},"temp":{"left":"781.268px","top":"124.438px","width":"340px","height":"130px"},"wind":{"left":"1284.36px","top":"10.6411px","width":"614px","height":"333px"},"tideStatus":{"left":"317.877px","top":"282.466px","width":"1231.23px","height":"88px"},"forecast":{"left":"8.8933px","top":"347.661px","width":"1896.39px","height":"262.928px"},"divider":{"left":"823.756px","top":"13.4772px","width":"120px","height":"43px"},"tideChart":{"left":"2.3574px","top":"594.809px","width":"1906px","height":"348px"}};
 
-const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"wind":{"theme":"clean"},"temp":{"theme":"clean"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0}};
+const DEFAULT_SETTINGS = {"widgetSettings":{"layout":{},"stations":{"theme":"clean"},"logo":{"hidden":true},"heroText":{"hidden":true},"clock":{"theme":"clean"},"temp":{"theme":"clean"},"wind":{"theme":"clean","row2Font":"Georgia","row1Font":"Georgia"},"tideStatus":{"theme":"clean"},"forecast":{"theme":"clean","row2Font":"Segoe UI"},"divider":{"hidden":true,"theme":"clean"},"tideChart":{"theme":"clean"}},"dashboardSettings":{"backgroundColor":"#07131c","backgroundHue":0},"heroTitle":"f","heroSubtitle":"f"};
 
 
 /* location defaults */
@@ -29,8 +29,7 @@ let userLon = -81.302;
 /* marine location for satellite compass */
 let marineLocationLat = null;
 let marineLocationLon = null;
-let compassZoom = parseInt(localStorage.getItem("compassZoom") || "15");
-let radarZoom   = parseInt(localStorage.getItem("radarZoom")   || "7");
+let compassZoom = parseInt(localStorage.getItem("compassZoom") || "6");
 let compassMapMode = "compass";
 let compassSize = 190;
 let compassStyle = "ring";
@@ -70,7 +69,7 @@ const WEATHER_HOURS = 12;
 /* ---- Mobile detection ---- */
 /* isMobile: matches the CSS @media query exactly */
 function isMobile() {
-  return window.matchMedia("(max-width: 767px)").matches;
+  return window.matchMedia("(max-width: 767px), (max-width: 1400px) and (pointer: coarse)").matches;
 }
 
 /* Forecast: show 3 cards on mobile (draggable), 12 on desktop */
@@ -1794,7 +1793,6 @@ async function loadMarineLocation() {
   const lon = localStorage.getItem("marineLocationLon");
   const address = localStorage.getItem("marineLocationAddress");
   const savedZoom = localStorage.getItem("compassZoom");
-  const savedRadarZoom = localStorage.getItem("radarZoom");
   const savedMode = localStorage.getItem("compassMapMode");
   const savedSize = localStorage.getItem("compassSize");
   const savedStyle = localStorage.getItem("compassStyle");
@@ -1812,13 +1810,6 @@ async function loadMarineLocation() {
     const label = document.getElementById("compassZoomLabel");
     if (el) el.value = compassZoom;
     if (label) label.textContent = compassZoom;
-  }
-  if (savedRadarZoom) {
-    radarZoom = parseInt(savedRadarZoom);
-    const el = document.getElementById("radarZoomSlider");
-    const label = document.getElementById("radarZoomLabel");
-    if (el) el.value = radarZoom;
-    if (label) label.textContent = radarZoom;
   }
   if (savedMode) {
     compassMapMode = savedMode;
@@ -1935,28 +1926,11 @@ function attachCompassSettingsEvents() {
     });
   }
 
-  const radarZoomSlider = document.getElementById("radarZoomSlider");
-  if (radarZoomSlider) {
-    radarZoomSlider.value = radarZoom;
-    radarZoomSlider.addEventListener("input", () => {
-      radarZoom = parseInt(radarZoomSlider.value);
-      const label = document.getElementById("radarZoomLabel");
-      if (label) label.textContent = radarZoom;
-      localStorage.setItem("radarZoom", radarZoom);
-      const ifrZ = document.getElementById("radarIframe");
-      if (ifrZ) ifrZ.src = "";
-      setTimeout(refreshRadarOverlay, 100);
-      updateCompassMap();
-    });
-  }
-
   const modeSelect = document.getElementById("compassMapMode");
   if (modeSelect) {
     const updateRadarRow = () => {
       const row = document.getElementById("radarSpeedRow");
       if (row) row.style.display = modeSelect.value === "radar" ? "" : "none";
-      const zRow = document.getElementById("radarZoomRow");
-      if (zRow) zRow.style.display = modeSelect.value === "radar" ? "" : "none";
     };
     modeSelect.addEventListener("change", () => {
       compassMapMode = modeSelect.value;
@@ -3153,7 +3127,7 @@ function updateCompassMap() {
     const lon  = (marineLocationLon != null ? marineLocationLon :
                   (!isNaN(savedLon)  ? savedLon  :
                   (userLon           ? userLon   : -81.3)));
-    const zoom = Math.max(2, Math.min(radarZoom, 14));
+    const zoom = Math.max(2, Math.min(compassZoom, 14));
 
     const newSrc = "https://www.rainviewer.com/map.html?loc=" +
       lat.toFixed(5) + "," + lon.toFixed(5) + "," + zoom +
